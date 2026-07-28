@@ -5,50 +5,55 @@ import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-    useEffect,
-    useMemo,
-    useState,
-    type ChangeEvent,
-    type FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
 } from "react";
 
 import Header from "../../../../src/components/layout/header";
 import Sidebar from "../../../../src/components/layout/sidebar";
 
 import {
-    getDepartments,
-    type Department,
+  getDepartments,
+  type Department,
 } from "../../../../src/services/department.service";
 
 import {
-    createEmployee,
-    type UserRole,
+  createEmployee,
+  type UserRole,
 } from "../../../../src/services/employee.service";
 
 import {
-    getPositions,
-    type Position,
+  getPositions,
+  type Position,
 } from "../../../../src/services/position.service";
+
+type CreatableUserRole = Exclude<
+  UserRole,
+  "SUPER_ADMIN"
+>;
 
 interface StoredUser {
   email: string;
   role: UserRole;
 }
 
-interface CreateEmployeeInput {
+interface CreateEmployeeForm {
   email: string;
   password: string;
-  role: UserRole;
+  role: CreatableUserRole;
   employeeNumber: string;
   firstName: string;
   lastName: string;
-  phone?: string | null;
+  phone: string;
   hireDate: string;
   departmentId: string | null;
   positionId: string | null;
 }
 
-const initialForm: CreateEmployeeInput = {
+const initialForm: CreateEmployeeForm = {
   email: "",
   password: "",
   role: "EMPLOYEE",
@@ -61,6 +66,22 @@ const initialForm: CreateEmployeeInput = {
   positionId: null,
 };
 
+function getErrorMessage(
+  error: unknown,
+  fallbackMessage: string,
+): string {
+  if (axios.isAxiosError(error)) {
+    const message =
+      error.response?.data?.message;
+
+    if (typeof message === "string") {
+      return message;
+    }
+  }
+
+  return fallbackMessage;
+}
+
 export default function AddEmployeePage() {
   const router = useRouter();
 
@@ -68,7 +89,9 @@ export default function AddEmployeePage() {
     useState<StoredUser | null>(null);
 
   const [form, setForm] =
-    useState<CreateEmployeeInput>(initialForm);
+    useState<CreateEmployeeForm>(
+      initialForm,
+    );
 
   const [departments, setDepartments] =
     useState<Department[]>([]);
@@ -76,20 +99,27 @@ export default function AddEmployeePage() {
   const [positions, setPositions] =
     useState<Position[]>([]);
 
-  const [isLoadingOptions, setIsLoadingOptions] =
-    useState(true);
+  const [
+    isLoadingOptions,
+    setIsLoadingOptions,
+  ] = useState(true);
 
   const [isSubmitting, setIsSubmitting] =
     useState(false);
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
 
   useEffect(() => {
     const token =
-      localStorage.getItem("accessToken");
+      window.localStorage.getItem(
+        "accessToken",
+      );
 
     const storedUser =
-      localStorage.getItem("authUser");
+      window.localStorage.getItem(
+        "authUser",
+      );
 
     if (!token || !storedUser) {
       router.replace("/login");
@@ -98,11 +128,24 @@ export default function AddEmployeePage() {
 
     try {
       const parsedUser =
-        JSON.parse(storedUser) as StoredUser;
+        JSON.parse(
+          storedUser,
+        ) as StoredUser;
 
       if (
-        parsedUser.role !== "SUPER_ADMIN" &&
-        parsedUser.role !== "HR_MANAGER"
+        !parsedUser.email ||
+        !parsedUser.role
+      ) {
+        throw new Error(
+          "Invalid stored user",
+        );
+      }
+
+      if (
+        parsedUser.role !==
+          "SUPER_ADMIN" &&
+        parsedUser.role !==
+          "HR_MANAGER"
       ) {
         router.replace("/dashboard");
         return;
@@ -110,8 +153,13 @@ export default function AddEmployeePage() {
 
       setUser(parsedUser);
     } catch {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("authUser");
+      window.localStorage.removeItem(
+        "accessToken",
+      );
+
+      window.localStorage.removeItem(
+        "authUser",
+      );
 
       router.replace("/login");
     }
@@ -127,11 +175,13 @@ export default function AddEmployeePage() {
         setIsLoadingOptions(true);
         setError("");
 
-        const [departmentData, positionData] =
-          await Promise.all([
-            getDepartments(),
-            getPositions(),
-          ]);
+        const [
+          departmentData,
+          positionData,
+        ] = await Promise.all([
+          getDepartments(),
+          getPositions(),
+        ]);
 
         setDepartments(departmentData);
         setPositions(positionData);
@@ -141,20 +191,12 @@ export default function AddEmployeePage() {
           requestError,
         );
 
-        if (axios.isAxiosError(requestError)) {
-          const message =
-            requestError.response?.data?.message;
-
-          setError(
-            typeof message === "string"
-              ? message
-              : "Unable to load departments and positions.",
-          );
-        } else {
-          setError(
+        setError(
+          getErrorMessage(
+            requestError,
             "Unable to load departments and positions.",
-          );
-        }
+          ),
+        );
       } finally {
         setIsLoadingOptions(false);
       }
@@ -163,17 +205,21 @@ export default function AddEmployeePage() {
     void loadEmployeeOptions();
   }, [user]);
 
-  const filteredPositions = useMemo(() => {
-    if (!form.departmentId) {
-      return [];
-    }
+  const filteredPositions =
+    useMemo(() => {
+      if (!form.departmentId) {
+        return [];
+      }
 
-    return positions.filter(
-      (position) =>
-        position.departmentId ===
-        form.departmentId,
-    );
-  }, [positions, form.departmentId]);
+      return positions.filter(
+        (position) =>
+          position.departmentId ===
+          form.departmentId,
+      );
+    }, [
+      positions,
+      form.departmentId,
+    ]);
 
   function updateField(
     field:
@@ -185,7 +231,7 @@ export default function AddEmployeePage() {
       | "phone"
       | "hireDate",
     value: string,
-  ) {
+  ): void {
     setForm((current) => ({
       ...current,
       [field]: value,
@@ -194,50 +240,56 @@ export default function AddEmployeePage() {
 
   function handleRoleChange(
     event: ChangeEvent<HTMLSelectElement>,
-  ) {
+  ): void {
+    const selectedRole =
+      event.target
+        .value as CreatableUserRole;
+
     setForm((current) => ({
       ...current,
-      role: event.target.value as UserRole,
+      role: selectedRole,
     }));
   }
 
   function handleDepartmentChange(
     event: ChangeEvent<HTMLSelectElement>,
-  ) {
+  ): void {
     const selectedDepartmentId =
-      event.target.value;
+      event.target.value || null;
 
     setForm((current) => ({
       ...current,
       departmentId:
-        selectedDepartmentId || null,
-
-      // Clear the old position when
-      // the department changes.
+        selectedDepartmentId,
       positionId: null,
     }));
   }
 
   function handlePositionChange(
     event: ChangeEvent<HTMLSelectElement>,
-  ) {
+  ): void {
     const selectedPositionId =
-      event.target.value;
+      event.target.value || null;
 
     setForm((current) => ({
       ...current,
-      positionId:
-        selectedPositionId || null,
+      positionId: selectedPositionId,
     }));
   }
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
-  ) {
+  ): Promise<void> {
     event.preventDefault();
 
+    if (!user) {
+      return;
+    }
+
     const token =
-      localStorage.getItem("accessToken");
+      window.localStorage.getItem(
+        "accessToken",
+      );
 
     if (!token) {
       router.replace("/login");
@@ -246,26 +298,45 @@ export default function AddEmployeePage() {
 
     setError("");
 
+    if (
+      user.role === "HR_MANAGER" &&
+      form.role !== "EMPLOYEE"
+    ) {
+      setError(
+        "HR Managers can only create Employee accounts.",
+      );
+
+      return;
+    }
+
     if (!form.departmentId) {
-      setError("Please select a department.");
+      setError(
+        "Please select a department.",
+      );
+
       return;
     }
 
     if (!form.positionId) {
-      setError("Please select a position.");
+      setError(
+        "Please select a position.",
+      );
+
       return;
     }
 
     const selectedPosition =
       positions.find(
         (position) =>
-          position.id === form.positionId,
+          position.id ===
+          form.positionId,
       );
 
     if (!selectedPosition) {
       setError(
         "The selected position was not found.",
       );
+
       return;
     }
 
@@ -276,42 +347,46 @@ export default function AddEmployeePage() {
       setError(
         "The selected position does not belong to the selected department.",
       );
+
       return;
     }
 
-    setIsSubmitting(true);
-
     try {
+      setIsSubmitting(true);
+
       await createEmployee({
-        email: form.email.trim(),
+        email: form.email
+          .trim()
+          .toLowerCase(),
         password: form.password,
         role: form.role,
         employeeNumber:
           form.employeeNumber.trim(),
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
+        firstName:
+          form.firstName.trim(),
+        lastName:
+          form.lastName.trim(),
         phone:
-          form.phone?.trim() || undefined,
+          form.phone.trim() ||
+          undefined,
         hireDate: form.hireDate,
-        departmentId: form.departmentId,
+        departmentId:
+          form.departmentId,
         positionId: form.positionId,
       });
 
-      router.push("/dashboard/employees");
+      router.push(
+        "/dashboard/employees",
+      );
+
       router.refresh();
     } catch (requestError: unknown) {
-      if (axios.isAxiosError(requestError)) {
-        const message =
-          requestError.response?.data?.message;
-
-        setError(
-          typeof message === "string"
-            ? message
-            : "Unable to create employee.",
-        );
-      } else {
-        setError("Unable to create employee.");
-      }
+      setError(
+        getErrorMessage(
+          requestError,
+          "Unable to create employee.",
+        ),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -353,8 +428,8 @@ export default function AddEmployeePage() {
               </h1>
 
               <p className="mt-2 text-slate-600">
-                Create a user account and employee
-                profile.
+                Create a user account and
+                employee profile.
               </p>
             </div>
 
@@ -386,6 +461,7 @@ export default function AddEmployeePage() {
                       id="email"
                       type="email"
                       required
+                      autoComplete="email"
                       value={form.email}
                       onChange={(event) =>
                         updateField(
@@ -410,6 +486,7 @@ export default function AddEmployeePage() {
                       type="password"
                       required
                       minLength={8}
+                      autoComplete="new-password"
                       value={form.password}
                       onChange={(event) =>
                         updateField(
@@ -432,23 +509,31 @@ export default function AddEmployeePage() {
                     <select
                       id="role"
                       value={form.role}
-                      onChange={handleRoleChange}
+                      onChange={
+                        handleRoleChange
+                      }
                       className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
                     >
                       <option value="EMPLOYEE">
                         Employee
                       </option>
 
-                      <option value="HR_MANAGER">
-                        HR Manager
-                      </option>
-
-                      {user.role === "SUPER_ADMIN" && (
-                        <option value="SUPER_ADMIN">
-                          Super Admin
+                      {user.role ===
+                        "SUPER_ADMIN" && (
+                        <option value="HR_MANAGER">
+                          HR Manager
                         </option>
                       )}
                     </select>
+
+                    {user.role ===
+                      "HR_MANAGER" && (
+                      <p className="mt-2 text-xs text-slate-500">
+                        HR Managers can only
+                        create Employee
+                        accounts.
+                      </p>
+                    )}
                   </div>
                 </div>
               </section>
@@ -472,7 +557,9 @@ export default function AddEmployeePage() {
                       type="text"
                       required
                       placeholder="EMP-001"
-                      value={form.employeeNumber}
+                      value={
+                        form.employeeNumber
+                      }
                       onChange={(event) =>
                         updateField(
                           "employeeNumber",
@@ -563,7 +650,7 @@ export default function AddEmployeePage() {
                     <input
                       id="phone"
                       type="tel"
-                      value={form.phone ?? ""}
+                      value={form.phone}
                       onChange={(event) =>
                         updateField(
                           "phone",
@@ -585,9 +672,16 @@ export default function AddEmployeePage() {
                     <select
                       id="departmentId"
                       required
-                      value={form.departmentId ?? ""}
-                      onChange={handleDepartmentChange}
-                      disabled={isLoadingOptions}
+                      value={
+                        form.departmentId ??
+                        ""
+                      }
+                      onChange={
+                        handleDepartmentChange
+                      }
+                      disabled={
+                        isLoadingOptions
+                      }
                       className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100"
                     >
                       <option value="">
@@ -599,10 +693,16 @@ export default function AddEmployeePage() {
                       {departments.map(
                         (department) => (
                           <option
-                            key={department.id}
-                            value={department.id}
+                            key={
+                              department.id
+                            }
+                            value={
+                              department.id
+                            }
                           >
-                            {department.name}
+                            {
+                              department.name
+                            }
                           </option>
                         ),
                       )}
@@ -620,8 +720,13 @@ export default function AddEmployeePage() {
                     <select
                       id="positionId"
                       required
-                      value={form.positionId ?? ""}
-                      onChange={handlePositionChange}
+                      value={
+                        form.positionId ??
+                        ""
+                      }
+                      onChange={
+                        handlePositionChange
+                      }
                       disabled={
                         isLoadingOptions ||
                         !form.departmentId
@@ -631,7 +736,8 @@ export default function AddEmployeePage() {
                       <option value="">
                         {!form.departmentId
                           ? "Select a department first"
-                          : filteredPositions.length === 0
+                          : filteredPositions.length ===
+                              0
                             ? "No positions available"
                             : "Select a position"}
                       </option>
@@ -639,8 +745,12 @@ export default function AddEmployeePage() {
                       {filteredPositions.map(
                         (position) => (
                           <option
-                            key={position.id}
-                            value={position.id}
+                            key={
+                              position.id
+                            }
+                            value={
+                              position.id
+                            }
                           >
                             {position.title}
                           </option>
@@ -654,7 +764,7 @@ export default function AddEmployeePage() {
               <div className="mt-10 flex justify-end gap-3 border-t border-slate-200 pt-6">
                 <Link
                   href="/dashboard/employees"
-                  className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700"
+                  className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Cancel
                 </Link>
@@ -665,7 +775,7 @@ export default function AddEmployeePage() {
                     isSubmitting ||
                     isLoadingOptions
                   }
-                  className="flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Save size={17} />
 
