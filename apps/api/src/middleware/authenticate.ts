@@ -64,10 +64,10 @@ export function authenticate(
       return;
     }
 
-    const secret =
+    const jwtSecret =
       process.env.JWT_ACCESS_SECRET;
 
-    if (!secret) {
+    if (!jwtSecret) {
       throw new Error(
         "JWT_ACCESS_SECRET is not configured",
       );
@@ -75,7 +75,7 @@ export function authenticate(
 
     const decoded = jwt.verify(
       token,
-      secret,
+      jwtSecret,
     ) as JwtPayload;
 
     const userId =

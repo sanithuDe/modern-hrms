@@ -3,11 +3,11 @@ import express from "express";
 import morgan from "morgan";
 
 import {
-    errorHandler,
+  errorHandler,
 } from "./middleware/errorHandler.js";
 
 import {
-    notFoundHandler,
+  notFoundHandler,
 } from "./middleware/notFoundHandler.js";
 
 import announcementRoutes from "./modules/announcements/announcement.routes.js";

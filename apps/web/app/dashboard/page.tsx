@@ -24,9 +24,14 @@ import {
   getEmployees,
 } from "../../src/services/employee.service";
 
+type UserRole =
+  | "SUPER_ADMIN"
+  | "HR_MANAGER"
+  | "EMPLOYEE";
+
 interface StoredUser {
   email: string;
-  role: string;
+  role: UserRole;
 }
 
 interface DashboardCard {
@@ -70,6 +75,16 @@ function getErrorMessage(
   return "Failed to load dashboard information";
 }
 
+function isUserRole(
+  value: unknown,
+): value is UserRole {
+  return (
+    value === "SUPER_ADMIN" ||
+    value === "HR_MANAGER" ||
+    value === "EMPLOYEE"
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -95,7 +110,7 @@ export default function DashboardPage() {
     useState("");
 
   useEffect(() => {
-    const token =
+    const accessToken =
       window.localStorage.getItem(
         "accessToken",
       );
@@ -106,7 +121,7 @@ export default function DashboardPage() {
       );
 
     if (
-      !token ||
+      !accessToken ||
       !storedUserValue
     ) {
       setLoading(false);
@@ -120,10 +135,47 @@ export default function DashboardPage() {
       storedUser: string,
     ): Promise<void> {
       try {
-        const parsedUser =
+        const parsedValue: unknown =
           JSON.parse(
             storedUser,
-          ) as StoredUser;
+          );
+
+        if (
+          typeof parsedValue !==
+            "object" ||
+          parsedValue === null
+        ) {
+          throw new Error(
+            "Invalid stored user information",
+          );
+        }
+
+        const possibleUser =
+          parsedValue as {
+            email?: unknown;
+            role?: unknown;
+          };
+
+        if (
+          typeof possibleUser.email !==
+            "string" ||
+          !possibleUser.email.trim() ||
+          !isUserRole(
+            possibleUser.role,
+          )
+        ) {
+          throw new Error(
+            "Invalid stored user information",
+          );
+        }
+
+        const parsedUser: StoredUser =
+          {
+            email:
+              possibleUser.email,
+            role:
+              possibleUser.role,
+          };
 
         if (!isMounted) {
           return;
@@ -159,6 +211,9 @@ export default function DashboardPage() {
           return;
         }
 
+        const errorMessages: string[] =
+          [];
+
         if (
           announcementResult.status ===
           "fulfilled"
@@ -176,7 +231,7 @@ export default function DashboardPage() {
         } else {
           setAnnouncementCount(0);
 
-          setError(
+          errorMessages.push(
             getErrorMessage(
               announcementResult.reason,
             ),
@@ -193,18 +248,24 @@ export default function DashboardPage() {
         } else {
           setEmployeeCount(0);
 
-          if (!error) {
-            setError(
-              getErrorMessage(
-                employeeResult.reason,
-              ),
-            );
-          }
+          errorMessages.push(
+            getErrorMessage(
+              employeeResult.reason,
+            ),
+          );
         }
+
+        setError(
+          errorMessages.join(" "),
+        );
       } catch (loadError) {
         if (!isMounted) {
           return;
         }
+
+        setUser(null);
+        setEmployeeCount(0);
+        setAnnouncementCount(0);
 
         setError(
           getErrorMessage(
@@ -212,8 +273,15 @@ export default function DashboardPage() {
           ),
         );
 
-        setEmployeeCount(0);
-        setAnnouncementCount(0);
+        window.localStorage.removeItem(
+          "accessToken",
+        );
+
+        window.localStorage.removeItem(
+          "authUser",
+        );
+
+        router.replace("/login");
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -230,84 +298,100 @@ export default function DashboardPage() {
     };
   }, [router]);
 
+  const canManageEmployees =
+    user?.role === "SUPER_ADMIN" ||
+    user?.role === "HR_MANAGER";
+
+  const canManagePayroll =
+    user?.role === "SUPER_ADMIN" ||
+    user?.role === "HR_MANAGER";
+
   const dashboardCards =
     useMemo<DashboardCard[]>(
       () => [
         {
           title:
-            "Total Employees",
+            canManageEmployees
+              ? "Total Employees"
+              : "Employee Profile",
 
           value:
-            String(
-              employeeCount,
-            ),
+            canManageEmployees
+              ? String(
+                  employeeCount,
+                )
+              : "View",
 
           description:
-            "Active employee records",
+            canManageEmployees
+              ? "Active employee records"
+              : "View your employee information",
 
-          icon:
-            Users,
+          icon: Users,
 
           href:
-            "/dashboard/employees",
+            canManageEmployees
+              ? "/dashboard/employees"
+              : "/dashboard",
+        },
+
+        {
+          title: "Pending Leave",
+
+          value: "0",
+
+          description:
+            canManageEmployees
+              ? "Requests awaiting review"
+              : "Your pending leave requests",
+
+          icon: CalendarCheck,
+
+          href: "/dashboard/leave",
         },
 
         {
           title:
-            "Pending Leave",
+            canManagePayroll
+              ? "Payroll Status"
+              : "My Payroll",
 
           value:
-            "0",
+            canManagePayroll
+              ? "Draft"
+              : "View",
 
           description:
-            "Requests awaiting review",
+            canManagePayroll
+              ? "Current payroll period"
+              : "View your payroll records",
 
-          icon:
-            CalendarCheck,
+          icon: CircleDollarSign,
 
-          href:
-            "/dashboard/leave",
+          href: "/dashboard/payroll",
         },
 
         {
-          title:
-            "Payroll Status",
+          title: "Announcements",
 
-          value:
-            "Draft",
-
-          description:
-            "Current payroll period",
-
-          icon:
-            CircleDollarSign,
-
-          href:
-            "/dashboard/payroll",
-        },
-
-        {
-          title:
-            "Announcements",
-
-          value:
-            String(
-              announcementCount,
-            ),
+          value: String(
+            announcementCount,
+          ),
 
           description:
             "Published announcements",
 
-          icon:
-            Bell,
+          icon: Bell,
 
           href:
             "/dashboard/announcements",
         },
       ],
       [
-        employeeCount,
         announcementCount,
+        canManageEmployees,
+        canManagePayroll,
+        employeeCount,
       ],
     );
 
@@ -336,6 +420,12 @@ export default function DashboardPage() {
     );
   }
 
+  const formattedRole =
+    user.role.replaceAll(
+      "_",
+      " ",
+    );
+
   return (
     <div className="space-y-8">
       <section>
@@ -344,13 +434,17 @@ export default function DashboardPage() {
         </h1>
 
         <p className="mt-2 text-slate-600">
-          Review the latest HR activity
+          Signed in as{" "}
+          <span className="font-medium text-slate-800">
+            {formattedRole}
+          </span>
+          . Review the latest HR activity
           and system information.
         </p>
       </section>
 
       {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {error}
         </div>
       ) : null}
@@ -409,22 +503,23 @@ export default function DashboardPage() {
           </h2>
 
           <div className="mt-6 space-y-3">
-            <div className="rounded-xl bg-slate-50 p-5">
-              <p className="text-sm font-medium text-slate-800">
-                Employee records
-                available
-              </p>
+            {canManageEmployees ? (
+              <div className="rounded-xl bg-slate-50 p-5">
+                <p className="text-sm font-medium text-slate-800">
+                  Employee records
+                </p>
 
-              <p className="mt-1 text-sm text-slate-500">
-                There are currently{" "}
-                {employeeCount} employee
-                record
-                {employeeCount === 1
-                  ? ""
-                  : "s"}{" "}
-                in the system.
-              </p>
-            </div>
+                <p className="mt-1 text-sm text-slate-500">
+                  There are currently{" "}
+                  {employeeCount} employee
+                  record
+                  {employeeCount === 1
+                    ? ""
+                    : "s"}{" "}
+                  in the system.
+                </p>
+              </div>
+            ) : null}
 
             <div className="rounded-xl bg-slate-50 p-5">
               <p className="text-sm font-medium text-slate-800">
@@ -455,32 +550,40 @@ export default function DashboardPage() {
           </h2>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <Link
-              href="/dashboard/employees/new"
-              className="rounded-xl bg-slate-900 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-slate-800"
-            >
-              Add Employee
-            </Link>
+            {canManageEmployees ? (
+              <Link
+                href="/dashboard/employees/new"
+                className="rounded-xl bg-slate-900 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-slate-800"
+              >
+                Add Employee
+              </Link>
+            ) : null}
 
             <Link
               href="/dashboard/announcements"
               className="rounded-xl border border-slate-300 px-4 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
             >
-              Create Announcement
+              {canManageEmployees
+                ? "Create Announcement"
+                : "View Announcements"}
             </Link>
 
             <Link
               href="/dashboard/leave"
               className="rounded-xl border border-slate-300 px-4 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
             >
-              Review Leave
+              {canManageEmployees
+                ? "Review Leave"
+                : "My Leave"}
             </Link>
 
             <Link
               href="/dashboard/payroll"
               className="rounded-xl border border-slate-300 px-4 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
             >
-              View Payroll
+              {canManagePayroll
+                ? "View Payroll"
+                : "My Payroll"}
             </Link>
           </div>
         </article>

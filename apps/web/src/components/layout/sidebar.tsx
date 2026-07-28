@@ -16,12 +16,21 @@ import {
   WalletCards,
 } from "lucide-react";
 
+import type {
+  ComponentType,
+} from "react";
+
 import Link from "next/link";
 
 import {
   usePathname,
   useRouter,
 } from "next/navigation";
+
+type UserRole =
+  | "SUPER_ADMIN"
+  | "HR_MANAGER"
+  | "EMPLOYEE";
 
 interface SidebarProps {
   role: string;
@@ -30,130 +39,222 @@ interface SidebarProps {
 interface SidebarLink {
   label: string;
   href: string;
-  icon: React.ComponentType<{
+
+  icon: ComponentType<{
     size?: number;
     strokeWidth?: number;
     className?: string;
   }>;
 }
 
-const superAdminLinks: SidebarLink[] = [
+const dashboardLink: SidebarLink =
   {
     label: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
-  },
+  };
+
+const employeesLink: SidebarLink =
   {
     label: "Employees",
-    href: "/dashboard/employees",
+    href:
+      "/dashboard/employees",
     icon: Users,
-  },
+  };
+
+const departmentsLink: SidebarLink =
   {
     label: "Departments",
-    href: "/dashboard/departments",
+    href:
+      "/dashboard/departments",
     icon: Building2,
-  },
+  };
+
+const positionsLink: SidebarLink =
   {
     label: "Positions",
-    href: "/dashboard/positions",
-    icon: BriefcaseBusiness,
-  },
+    href:
+      "/dashboard/positions",
+    icon:
+      BriefcaseBusiness,
+  };
+
+const payrollLink: SidebarLink =
   {
     label: "Payroll",
-    href: "/dashboard/payroll",
+    href:
+      "/dashboard/payroll",
     icon: WalletCards,
-  },
+  };
+
+const leaveLink: SidebarLink =
   {
     label: "Leave",
-    href: "/dashboard/leave",
+    href:
+      "/dashboard/leave",
     icon: CalendarDays,
-  },
+  };
+
+const attendanceLink: SidebarLink =
   {
     label: "Attendance",
-    href: "/dashboard/attendance",
+    href:
+      "/dashboard/attendance",
     icon: UserRound,
-  },
+  };
+
+const performanceLink: SidebarLink =
   {
     label: "Performance",
-    href: "/dashboard/performance",
-    icon: ChartNoAxesCombined,
-  },
+    href:
+      "/dashboard/performance",
+    icon:
+      ChartNoAxesCombined,
+  };
+
+const announcementsLink: SidebarLink =
   {
-    label: "Announcements",
-    href: "/dashboard/announcements",
+    label:
+      "Announcements",
+    href:
+      "/dashboard/announcements",
     icon: Bell,
-  },
+  };
+
+const recruitmentLink: SidebarLink =
   {
-    label: "Recruitment",
-    href: "/dashboard/recruitment",
+    label:
+      "Recruitment",
+    href:
+      "/dashboard/recruitment",
     icon: FileText,
-  },
+  };
+
+const cvPortalLink: SidebarLink =
   {
     label: "CV Portal",
-    href: "/dashboard/cv",
+    href:
+      "/dashboard/cv",
     icon: FileSearch,
-  },
+  };
+
+const settingsLink: SidebarLink =
   {
     label: "Settings",
-    href: "/dashboard/settings",
+    href:
+      "/dashboard/settings",
     icon: Settings,
-  },
-];
+  };
+
+const superAdminLinks: SidebarLink[] =
+  [
+    dashboardLink,
+    employeesLink,
+    departmentsLink,
+    positionsLink,
+    payrollLink,
+    leaveLink,
+    attendanceLink,
+    performanceLink,
+    announcementsLink,
+    recruitmentLink,
+    cvPortalLink,
+    settingsLink,
+  ];
 
 const hrManagerLinks: SidebarLink[] =
-  superAdminLinks.filter(
-    (item) =>
-      item.label !== "Settings" &&
-      item.label !== "Departments" &&
-      item.label !== "Positions",
-  );
+  [
+    dashboardLink,
+    employeesLink,
+    departmentsLink,
+    positionsLink,
+    payrollLink,
+    leaveLink,
+    attendanceLink,
+    performanceLink,
+    announcementsLink,
+    recruitmentLink,
+    cvPortalLink,
+  ];
 
-const employeeLinks: SidebarLink[] = [
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    label: "My Payroll",
-    href: "/dashboard/payroll",
-    icon: WalletCards,
-  },
-  {
-    label: "My Leave",
-    href: "/dashboard/leave",
-    icon: CalendarDays,
-  },
-  {
-    label: "My Attendance",
-    href: "/dashboard/attendance",
-    icon: UserRound,
-  },
-  {
-    label: "My Performance",
-    href: "/dashboard/performance",
-    icon: ChartNoAxesCombined,
-  },
-  {
-    label: "Announcements",
-    href: "/dashboard/announcements",
-    icon: Bell,
-  },
-  {
-    label: "CV Portal",
-    href: "/dashboard/cv",
-    icon: FileSearch,
-  },
-];
+const employeeLinks: SidebarLink[] =
+  [
+    dashboardLink,
+
+    {
+      label: "My Payroll",
+      href:
+        "/dashboard/payroll",
+      icon: WalletCards,
+    },
+
+    {
+      label: "My Leave",
+      href:
+        "/dashboard/leave",
+      icon: CalendarDays,
+    },
+
+    {
+      label:
+        "My Attendance",
+      href:
+        "/dashboard/attendance",
+      icon: UserRound,
+    },
+
+    {
+      label:
+        "My Performance",
+      href:
+        "/dashboard/performance",
+      icon:
+        ChartNoAxesCombined,
+    },
+
+    announcementsLink,
+    cvPortalLink,
+  ];
+
+function normalizeRole(
+  role: string,
+): UserRole {
+  if (
+    role ===
+    "SUPER_ADMIN"
+  ) {
+    return "SUPER_ADMIN";
+  }
+
+  if (
+    role ===
+    "HR_MANAGER"
+  ) {
+    return "HR_MANAGER";
+  }
+
+  return "EMPLOYEE";
+}
 
 function getLinksByRole(
   role: string,
 ): SidebarLink[] {
-  if (role === "SUPER_ADMIN") {
+  const normalizedRole =
+    normalizeRole(
+      role,
+    );
+
+  if (
+    normalizedRole ===
+    "SUPER_ADMIN"
+  ) {
     return superAdminLinks;
   }
 
-  if (role === "HR_MANAGER") {
+  if (
+    normalizedRole ===
+    "HR_MANAGER"
+  ) {
     return hrManagerLinks;
   }
 
@@ -163,11 +264,16 @@ function getLinksByRole(
 export default function Sidebar({
   role,
 }: SidebarProps) {
-  const router = useRouter();
-  const pathname = usePathname();
+  const router =
+    useRouter();
+
+  const pathname =
+    usePathname();
 
   const links =
-    getLinksByRole(role);
+    getLinksByRole(
+      role,
+    );
 
   function handleLogout(): void {
     window.localStorage.removeItem(
@@ -178,19 +284,29 @@ export default function Sidebar({
       "authUser",
     );
 
-    router.replace("/login");
+    router.replace(
+      "/login",
+    );
   }
 
   function isActive(
     href: string,
   ): boolean {
-    if (href === "/dashboard") {
-      return pathname === "/dashboard";
+    if (
+      href === "/dashboard"
+    ) {
+      return (
+        pathname ===
+        "/dashboard"
+      );
     }
 
-    return pathname.startsWith(
-      `${href}/`,
-    ) || pathname === href;
+    return (
+      pathname === href ||
+      pathname.startsWith(
+        `${href}/`,
+      )
+    );
   }
 
   return (
@@ -201,42 +317,53 @@ export default function Sidebar({
         </h1>
 
         <p className="mt-1 text-xs text-slate-400">
-          Human Resource Management
+          Human Resource
+          Management
         </p>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-5">
         <div className="space-y-1">
-          {links.map((item) => {
-            const Icon =
-              item.icon;
+          {links.map(
+            (item) => {
+              const Icon =
+                item.icon;
 
-            const active =
-              isActive(
-                item.href,
+              const active =
+                isActive(
+                  item.href,
+                );
+
+              return (
+                <Link
+                  key={
+                    item.href
+                  }
+                  href={
+                    item.href
+                  }
+                  className={
+                    active
+                      ? "flex items-center gap-3 rounded-lg bg-slate-800 px-3 py-3 text-sm font-semibold text-white"
+                      : "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                  }
+                >
+                  <Icon
+                    size={18}
+                    strokeWidth={
+                      1.8
+                    }
+                  />
+
+                  <span>
+                    {
+                      item.label
+                    }
+                  </span>
+                </Link>
               );
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={
-                  active
-                    ? "flex items-center gap-3 rounded-lg bg-slate-800 px-3 py-3 text-sm font-semibold text-white"
-                    : "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white"
-                }
-              >
-                <Icon
-                  size={18}
-                  strokeWidth={1.8}
-                />
-
-                <span>
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
+            },
+          )}
         </div>
       </nav>
 
@@ -250,7 +377,9 @@ export default function Sidebar({
         >
           <LogOut
             size={18}
-            strokeWidth={1.8}
+            strokeWidth={
+              1.8
+            }
           />
 
           <span>
