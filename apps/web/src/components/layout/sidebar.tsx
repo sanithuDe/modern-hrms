@@ -1,30 +1,43 @@
 "use client";
 
 import {
-    Bell,
-    BriefcaseBusiness,
-    Building2,
-    CalendarDays,
-    ChartNoAxesCombined,
-    FileText,
-    LayoutDashboard,
-    LogOut,
-    Settings,
-    UserRound,
-    Users,
-    WalletCards,
+  Bell,
+  BriefcaseBusiness,
+  Building2,
+  CalendarDays,
+  ChartNoAxesCombined,
+  FileSearch,
+  FileText,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  UserRound,
+  Users,
+  WalletCards,
 } from "lucide-react";
+
 import Link from "next/link";
+
 import {
-    usePathname,
-    useRouter,
+  usePathname,
+  useRouter,
 } from "next/navigation";
 
 interface SidebarProps {
   role: string;
 }
 
-const superAdminLinks = [
+interface SidebarLink {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+    className?: string;
+  }>;
+}
+
+const superAdminLinks: SidebarLink[] = [
   {
     label: "Dashboard",
     href: "/dashboard",
@@ -76,13 +89,18 @@ const superAdminLinks = [
     icon: FileText,
   },
   {
+    label: "CV Portal",
+    href: "/dashboard/cv",
+    icon: FileSearch,
+  },
+  {
     label: "Settings",
     href: "/dashboard/settings",
     icon: Settings,
   },
 ];
 
-const hrManagerLinks =
+const hrManagerLinks: SidebarLink[] =
   superAdminLinks.filter(
     (item) =>
       item.label !== "Settings" &&
@@ -90,7 +108,7 @@ const hrManagerLinks =
       item.label !== "Positions",
   );
 
-const employeeLinks = [
+const employeeLinks: SidebarLink[] = [
   {
     label: "Dashboard",
     href: "/dashboard",
@@ -121,7 +139,26 @@ const employeeLinks = [
     href: "/dashboard/announcements",
     icon: Bell,
   },
+  {
+    label: "CV Portal",
+    href: "/dashboard/cv",
+    icon: FileSearch,
+  },
 ];
+
+function getLinksByRole(
+  role: string,
+): SidebarLink[] {
+  if (role === "SUPER_ADMIN") {
+    return superAdminLinks;
+  }
+
+  if (role === "HR_MANAGER") {
+    return hrManagerLinks;
+  }
+
+  return employeeLinks;
+}
 
 export default function Sidebar({
   role,
@@ -130,11 +167,7 @@ export default function Sidebar({
   const pathname = usePathname();
 
   const links =
-    role === "SUPER_ADMIN"
-      ? superAdminLinks
-      : role === "HR_MANAGER"
-        ? hrManagerLinks
-        : employeeLinks;
+    getLinksByRole(role);
 
   function handleLogout(): void {
     window.localStorage.removeItem(
@@ -155,7 +188,9 @@ export default function Sidebar({
       return pathname === "/dashboard";
     }
 
-    return pathname.startsWith(href);
+    return pathname.startsWith(
+      `${href}/`,
+    ) || pathname === href;
   }
 
   return (
@@ -173,10 +208,13 @@ export default function Sidebar({
       <nav className="flex-1 overflow-y-auto px-3 py-5">
         <div className="space-y-1">
           {links.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(
-              item.href,
-            );
+            const Icon =
+              item.icon;
+
+            const active =
+              isActive(
+                item.href,
+              );
 
             return (
               <Link
@@ -193,7 +231,9 @@ export default function Sidebar({
                   strokeWidth={1.8}
                 />
 
-                <span>{item.label}</span>
+                <span>
+                  {item.label}
+                </span>
               </Link>
             );
           })}
@@ -203,7 +243,9 @@ export default function Sidebar({
       <div className="border-t border-slate-800 p-3">
         <button
           type="button"
-          onClick={handleLogout}
+          onClick={
+            handleLogout
+          }
           className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-red-300 transition hover:bg-red-950 hover:text-red-200"
         >
           <LogOut
@@ -211,7 +253,9 @@ export default function Sidebar({
             strokeWidth={1.8}
           />
 
-          <span>Logout</span>
+          <span>
+            Logout
+          </span>
         </button>
       </div>
     </aside>

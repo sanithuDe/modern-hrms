@@ -13,6 +13,7 @@ import {
 import announcementRoutes from "./modules/announcements/announcement.routes.js";
 import attendanceRoutes from "./modules/attendance/attendance.routes.js";
 import authRoutes from "./modules/auth/auth.routes.js";
+import cvPortalRoutes from "./modules/cv-portal/cv-portal.routes.js";
 import departmentRoutes from "./modules/departments/department.routes.js";
 import employeeRoutes from "./modules/employees/employee.routes.js";
 import leaveRoutes from "./modules/leave/leave.routes.js";
@@ -22,7 +23,8 @@ import positionRoutes from "./modules/positions/position.routes.js";
 import recruitmentRoutes from "./modules/recruitment/recruitment.routes.js";
 import settingsRoutes from "./modules/settings/settings.routes.js";
 
-const app = express();
+const app =
+  express();
 
 app.use(
   cors({
@@ -62,10 +64,12 @@ app.use(
 
 app.get(
   "/api/health",
-  (_request, response) => {
+  (
+    _request,
+    response,
+  ) => {
     response.status(200).json({
       success: true,
-
       message:
         "HR Platform API is running",
     });
@@ -125,6 +129,11 @@ app.use(
 app.use(
   "/api/settings",
   settingsRoutes,
+);
+
+app.use(
+  "/api/cv-portal",
+  cvPortalRoutes,
 );
 
 app.use(

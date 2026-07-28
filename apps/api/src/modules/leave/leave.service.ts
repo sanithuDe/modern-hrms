@@ -1,5 +1,10 @@
-import type { Prisma } from "@prisma/client";
-import { prisma } from "../../lib/prisma.js";
+import type {
+    Prisma,
+} from "../../generated/prisma/client.js";
+
+import {
+    prisma,
+} from "../../lib/prisma.js";
 
 import type {
     CreateLeaveBalanceInput,
@@ -17,7 +22,7 @@ const leaveTypeInclude = {
       leaveRequests: true,
     },
   },
-} as const;
+} satisfies Prisma.LeaveTypeInclude;
 
 const leaveBalanceInclude = {
   employee: {
@@ -52,7 +57,7 @@ const leaveBalanceInclude = {
       isActive: true,
     },
   },
-} as const;
+} satisfies Prisma.LeaveBalanceInclude;
 
 const leaveRequestInclude = {
   employee: {
@@ -95,7 +100,7 @@ const leaveRequestInclude = {
       role: true,
     },
   },
-} as const;
+} satisfies Prisma.LeaveRequestInclude;
 
 async function getEmployeeByUserId(
   userId: string,
@@ -183,15 +188,19 @@ export async function createLeaveType(
   return prisma.leaveType.create({
     data: {
       name: input.name,
+
       description:
         input.description || null,
+
       defaultDays:
         input.defaultDays,
+
       isActive:
         input.isActive ?? true,
     },
 
-    include: leaveTypeInclude,
+    include:
+      leaveTypeInclude,
   });
 }
 
@@ -216,7 +225,10 @@ export async function updateLeaveType(
     );
   }
 
-  if (input.name !== undefined) {
+  if (
+    input.name !==
+    undefined
+  ) {
     const duplicate =
       await prisma.leaveType.findFirst({
         where: {
@@ -245,27 +257,32 @@ export async function updateLeaveType(
     },
 
     data: {
-      ...(input.name !== undefined
+      ...(input.name !==
+        undefined
         ? {
-            name: input.name,
+            name:
+              input.name,
           }
         : {}),
 
-      ...(input.description !== undefined
+      ...(input.description !==
+        undefined
         ? {
             description:
               input.description,
           }
         : {}),
 
-      ...(input.defaultDays !== undefined
+      ...(input.defaultDays !==
+        undefined
         ? {
             defaultDays:
               input.defaultDays,
           }
         : {}),
 
-      ...(input.isActive !== undefined
+      ...(input.isActive !==
+        undefined
         ? {
             isActive:
               input.isActive,
@@ -273,7 +290,8 @@ export async function updateLeaveType(
         : {}),
     },
 
-    include: leaveTypeInclude,
+    include:
+      leaveTypeInclude,
   });
 }
 
@@ -281,13 +299,15 @@ export async function getLeaveTypes(
   activeOnly = false,
 ) {
   return prisma.leaveType.findMany({
-    where: activeOnly
-      ? {
-          isActive: true,
-        }
-      : undefined,
+    where:
+      activeOnly
+        ? {
+            isActive: true,
+          }
+        : undefined,
 
-    include: leaveTypeInclude,
+    include:
+      leaveTypeInclude,
 
     orderBy: {
       name: "asc",
@@ -301,7 +321,8 @@ export async function createLeaveBalance(
   const employee =
     await prisma.employee.findUnique({
       where: {
-        id: input.employeeId,
+        id:
+          input.employeeId,
       },
 
       select: {
@@ -318,7 +339,8 @@ export async function createLeaveBalance(
   const leaveType =
     await prisma.leaveType.findUnique({
       where: {
-        id: input.leaveTypeId,
+        id:
+          input.leaveTypeId,
       },
 
       select: {
@@ -334,14 +356,17 @@ export async function createLeaveBalance(
   }
 
   const existingBalance =
-    await (prisma as any).leaveBalance.findUnique({
+    await prisma.leaveBalance.findUnique({
       where: {
         employeeId_leaveTypeId_year: {
           employeeId:
             input.employeeId,
+
           leaveTypeId:
             input.leaveTypeId,
-          year: input.year,
+
+          year:
+            input.year,
         },
       },
 
@@ -356,19 +381,26 @@ export async function createLeaveBalance(
     );
   }
 
-  return (prisma as any).leaveBalance.create({
+  return prisma.leaveBalance.create({
     data: {
       employeeId:
         input.employeeId,
+
       leaveTypeId:
         input.leaveTypeId,
-      year: input.year,
+
+      year:
+        input.year,
+
       allocatedDays:
         input.allocatedDays,
-      usedDays: 0,
+
+      usedDays:
+        0,
     },
 
-    include: leaveBalanceInclude,
+    include:
+      leaveBalanceInclude,
   });
 }
 
@@ -377,7 +409,7 @@ export async function updateLeaveBalance(
   input: UpdateLeaveBalanceInput,
 ) {
   const leaveBalance =
-    await (prisma as any).leaveBalance.findUnique({
+    await prisma.leaveBalance.findUnique({
       where: {
         id,
       },
@@ -403,28 +435,35 @@ export async function updateLeaveBalance(
 
   const usedDays =
     input.usedDays ??
-    Number(leaveBalance.usedDays);
+    Number(
+      leaveBalance.usedDays,
+    );
 
-  if (usedDays > allocatedDays) {
+  if (
+    usedDays >
+    allocatedDays
+  ) {
     throw new Error(
       "Used days cannot exceed allocated days",
     );
   }
 
-  return (prisma as any).leaveBalance.update({
+  return prisma.leaveBalance.update({
     where: {
       id,
     },
 
     data: {
-      ...(input.allocatedDays !== undefined
+      ...(input.allocatedDays !==
+        undefined
         ? {
             allocatedDays:
               input.allocatedDays,
           }
         : {}),
 
-      ...(input.usedDays !== undefined
+      ...(input.usedDays !==
+        undefined
         ? {
             usedDays:
               input.usedDays,
@@ -432,21 +471,25 @@ export async function updateLeaveBalance(
         : {}),
     },
 
-    include: leaveBalanceInclude,
+    include:
+      leaveBalanceInclude,
   });
 }
 
 export async function getLeaveBalances() {
-  return (prisma as any).leaveBalance.findMany({
-    include: leaveBalanceInclude,
+  return prisma.leaveBalance.findMany({
+    include:
+      leaveBalanceInclude,
 
     orderBy: [
       {
         year: "desc",
       },
+
       {
         employee: {
-          firstName: "asc",
+          firstName:
+            "asc",
         },
       },
     ],
@@ -457,22 +500,28 @@ export async function getMyLeaveBalances(
   userId: string,
 ) {
   const employee =
-    await getEmployeeByUserId(userId);
+    await getEmployeeByUserId(
+      userId,
+    );
 
-  return (prisma as any).leaveBalance.findMany({
+  return prisma.leaveBalance.findMany({
     where: {
-      employeeId: employee.id,
+      employeeId:
+        employee.id,
     },
 
-    include: leaveBalanceInclude,
+    include:
+      leaveBalanceInclude,
 
     orderBy: [
       {
         year: "desc",
       },
+
       {
         leaveType: {
-          name: "asc",
+          name:
+            "asc",
         },
       },
     ],
@@ -484,12 +533,15 @@ export async function createLeaveRequest(
   input: CreateLeaveRequestInput,
 ) {
   const employee =
-    await getEmployeeByUserId(userId);
+    await getEmployeeByUserId(
+      userId,
+    );
 
   const leaveType =
     await prisma.leaveType.findUnique({
       where: {
-        id: input.leaveTypeId,
+        id:
+          input.leaveTypeId,
       },
 
       select: {
@@ -504,30 +556,45 @@ export async function createLeaveRequest(
     );
   }
 
-  if (!leaveType.isActive) {
+  if (
+    !leaveType.isActive
+  ) {
     throw new Error(
       "This leave type is currently inactive",
     );
   }
 
-  const startDate = normalizeDate(
-    new Date(input.startDate),
-  );
+  const startDate =
+    normalizeDate(
+      new Date(
+        input.startDate,
+      ),
+    );
 
-  const endDate = normalizeDate(
-    new Date(input.endDate),
-  );
+  const endDate =
+    normalizeDate(
+      new Date(
+        input.endDate,
+      ),
+    );
 
   if (
-    Number.isNaN(startDate.getTime()) ||
-    Number.isNaN(endDate.getTime())
+    Number.isNaN(
+      startDate.getTime(),
+    ) ||
+    Number.isNaN(
+      endDate.getTime(),
+    )
   ) {
     throw new Error(
       "Invalid leave dates",
     );
   }
 
-  if (endDate < startDate) {
+  if (
+    endDate <
+    startDate
+  ) {
     throw new Error(
       "End date cannot be before start date",
     );
@@ -539,7 +606,9 @@ export async function createLeaveRequest(
       endDate,
     );
 
-  if (totalDays <= 0) {
+  if (
+    totalDays <= 0
+  ) {
     throw new Error(
       "Leave request must contain at least one day",
     );
@@ -560,7 +629,8 @@ export async function createLeaveRequest(
   const overlappingRequest =
     await prisma.leaveRequest.findFirst({
       where: {
-        employeeId: employee.id,
+        employeeId:
+          employee.id,
 
         status: {
           in: [
@@ -570,11 +640,13 @@ export async function createLeaveRequest(
         },
 
         startDate: {
-          lte: endDate,
+          lte:
+            endDate,
         },
 
         endDate: {
-          gte: startDate,
+          gte:
+            startDate,
         },
       },
 
@@ -583,7 +655,9 @@ export async function createLeaveRequest(
       },
     });
 
-  if (overlappingRequest) {
+  if (
+    overlappingRequest
+  ) {
     throw new Error(
       "You already have a pending or approved leave request for these dates",
     );
@@ -593,10 +667,14 @@ export async function createLeaveRequest(
     await prisma.leaveBalance.findUnique({
       where: {
         employeeId_leaveTypeId_year: {
-          employeeId: employee.id,
+          employeeId:
+            employee.id,
+
           leaveTypeId:
             input.leaveTypeId,
-          year: currentYear,
+
+          year:
+            currentYear,
         },
       },
 
@@ -616,9 +694,14 @@ export async function createLeaveRequest(
     Number(
       leaveBalance.allocatedDays,
     ) -
-    Number(leaveBalance.usedDays);
+    Number(
+      leaveBalance.usedDays,
+    );
 
-  if (totalDays > remainingDays) {
+  if (
+    totalDays >
+    remainingDays
+  ) {
     throw new Error(
       `Insufficient leave balance. Remaining days: ${remainingDays}`,
     );
@@ -626,16 +709,22 @@ export async function createLeaveRequest(
 
   return prisma.leaveRequest.create({
     data: {
-      employeeId: employee.id,
+      employeeId:
+        employee.id,
+
       leaveTypeId:
         input.leaveTypeId,
+
       startDate,
       endDate,
       totalDays,
-      reason: input.reason,
+
+      reason:
+        input.reason,
     },
 
-    include: leaveRequestInclude,
+    include:
+      leaveRequestInclude,
   });
 }
 
@@ -643,27 +732,34 @@ export async function getMyLeaveRequests(
   userId: string,
 ) {
   const employee =
-    await getEmployeeByUserId(userId);
+    await getEmployeeByUserId(
+      userId,
+    );
 
   return prisma.leaveRequest.findMany({
     where: {
-      employeeId: employee.id,
+      employeeId:
+        employee.id,
     },
 
-    include: leaveRequestInclude,
+    include:
+      leaveRequestInclude,
 
     orderBy: {
-      createdAt: "desc",
+      createdAt:
+        "desc",
     },
   });
 }
 
 export async function getLeaveRequests() {
   return prisma.leaveRequest.findMany({
-    include: leaveRequestInclude,
+    include:
+      leaveRequestInclude,
 
     orderBy: {
-      createdAt: "desc",
+      createdAt:
+        "desc",
     },
   });
 }
@@ -695,7 +791,8 @@ export async function reviewLeaveRequest(
   }
 
   if (
-    leaveRequest.status !== "PENDING"
+    leaveRequest.status !==
+    "PENDING"
   ) {
     throw new Error(
       "Only pending leave requests can be reviewed",
@@ -703,7 +800,8 @@ export async function reviewLeaveRequest(
   }
 
   if (
-    input.decision === "REJECTED"
+    input.decision ===
+    "REJECTED"
   ) {
     return prisma.leaveRequest.update({
       where: {
@@ -711,15 +809,22 @@ export async function reviewLeaveRequest(
       },
 
       data: {
-        status: "REJECTED",
+        status:
+          "REJECTED",
+
         reviewedById:
           reviewerUserId,
+
         reviewComment:
-          input.reviewComment ?? null,
-        reviewedAt: new Date(),
+          input.reviewComment ??
+          null,
+
+        reviewedAt:
+          new Date(),
       },
 
-      include: leaveRequestInclude,
+      include:
+        leaveRequestInclude,
     });
   }
 
@@ -727,15 +832,19 @@ export async function reviewLeaveRequest(
     leaveRequest.startDate.getUTCFullYear();
 
   return prisma.$transaction(
-    async (transaction: Prisma.TransactionClient) => {
+    async (
+      transaction,
+    ) => {
       const balance =
         await transaction.leaveBalance.findUnique({
           where: {
             employeeId_leaveTypeId_year: {
               employeeId:
                 leaveRequest.employeeId,
+
               leaveTypeId:
                 leaveRequest.leaveTypeId,
+
               year,
             },
           },
@@ -748,10 +857,14 @@ export async function reviewLeaveRequest(
       }
 
       const allocatedDays =
-        Number(balance.allocatedDays);
+        Number(
+          balance.allocatedDays,
+        );
 
       const usedDays =
-        Number(balance.usedDays);
+        Number(
+          balance.usedDays,
+        );
 
       const requestedDays =
         Number(
@@ -759,7 +872,8 @@ export async function reviewLeaveRequest(
         );
 
       const remainingDays =
-        allocatedDays - usedDays;
+        allocatedDays -
+        usedDays;
 
       if (
         requestedDays >
@@ -772,7 +886,8 @@ export async function reviewLeaveRequest(
 
       await transaction.leaveBalance.update({
         where: {
-          id: balance.id,
+          id:
+            balance.id,
         },
 
         data: {
@@ -789,12 +904,18 @@ export async function reviewLeaveRequest(
         },
 
         data: {
-          status: "APPROVED",
+          status:
+            "APPROVED",
+
           reviewedById:
             reviewerUserId,
+
           reviewComment:
-            input.reviewComment ?? null,
-          reviewedAt: new Date(),
+            input.reviewComment ??
+            null,
+
+          reviewedAt:
+            new Date(),
         },
 
         include:
@@ -809,13 +930,17 @@ export async function cancelMyLeaveRequest(
   userId: string,
 ) {
   const employee =
-    await getEmployeeByUserId(userId);
+    await getEmployeeByUserId(
+      userId,
+    );
 
   const leaveRequest =
     await prisma.leaveRequest.findFirst({
       where: {
         id,
-        employeeId: employee.id,
+
+        employeeId:
+          employee.id,
       },
 
       select: {
@@ -831,7 +956,8 @@ export async function cancelMyLeaveRequest(
   }
 
   if (
-    leaveRequest.status !== "PENDING"
+    leaveRequest.status !==
+    "PENDING"
   ) {
     throw new Error(
       "Only pending leave requests can be cancelled",
@@ -844,10 +970,14 @@ export async function cancelMyLeaveRequest(
     },
 
     data: {
-      status: "CANCELLED",
-      cancelledAt: new Date(),
+      status:
+        "CANCELLED",
+
+      cancelledAt:
+        new Date(),
     },
 
-    include: leaveRequestInclude,
+    include:
+      leaveRequestInclude,
   });
 }

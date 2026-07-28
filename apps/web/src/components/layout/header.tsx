@@ -4,7 +4,10 @@ import {
   Bell,
   Search,
 } from "lucide-react";
-import { usePathname } from "next/navigation";
+
+import {
+  usePathname,
+} from "next/navigation";
 
 interface HeaderProps {
   email: string;
@@ -19,9 +22,14 @@ interface PageInformation {
 function getPageInformation(
   pathname: string,
 ): PageInformation {
-  if (pathname === "/dashboard") {
+  if (
+    pathname ===
+    "/dashboard"
+  ) {
     return {
-      title: "Dashboard",
+      title:
+        "Dashboard",
+
       subtitle:
         "Welcome back to your HR workspace",
     };
@@ -33,7 +41,9 @@ function getPageInformation(
     )
   ) {
     return {
-      title: "Employees",
+      title:
+        "Employees",
+
       subtitle:
         "Create and manage employee records",
     };
@@ -45,7 +55,9 @@ function getPageInformation(
     )
   ) {
     return {
-      title: "Departments",
+      title:
+        "Departments",
+
       subtitle:
         "Create and manage company departments",
     };
@@ -57,7 +69,9 @@ function getPageInformation(
     )
   ) {
     return {
-      title: "Positions",
+      title:
+        "Positions",
+
       subtitle:
         "Create and manage employee job positions",
     };
@@ -69,7 +83,9 @@ function getPageInformation(
     )
   ) {
     return {
-      title: "Payroll",
+      title:
+        "Payroll",
+
       subtitle:
         "Manage employee salary and payroll records",
     };
@@ -81,7 +97,9 @@ function getPageInformation(
     )
   ) {
     return {
-      title: "Leave",
+      title:
+        "Leave",
+
       subtitle:
         "Manage leave balances and requests",
     };
@@ -93,7 +111,9 @@ function getPageInformation(
     )
   ) {
     return {
-      title: "Attendance",
+      title:
+        "Attendance",
+
       subtitle:
         "Track check-in, check-out, and working time",
     };
@@ -105,7 +125,9 @@ function getPageInformation(
     )
   ) {
     return {
-      title: "Performance",
+      title:
+        "Performance",
+
       subtitle:
         "Monitor employee performance and progress",
     };
@@ -117,7 +139,9 @@ function getPageInformation(
     )
   ) {
     return {
-      title: "Announcements",
+      title:
+        "Announcements",
+
       subtitle:
         "Create and manage company announcements",
     };
@@ -129,9 +153,25 @@ function getPageInformation(
     )
   ) {
     return {
-      title: "Recruitment",
+      title:
+        "Recruitment",
+
       subtitle:
         "Manage candidates and recruitment activities",
+    };
+  }
+
+  if (
+    pathname.startsWith(
+      "/dashboard/cv",
+    )
+  ) {
+    return {
+      title:
+        "CV Portal",
+
+      subtitle:
+        "Submit, analyze, and manage candidate CVs",
     };
   }
 
@@ -141,14 +181,18 @@ function getPageInformation(
     )
   ) {
     return {
-      title: "Settings",
+      title:
+        "Settings",
+
       subtitle:
         "Manage HR platform settings",
     };
   }
 
   return {
-    title: "Dashboard",
+    title:
+      "Dashboard",
+
     subtitle:
       "Welcome back to your HR workspace",
   };
@@ -158,24 +202,34 @@ export default function Header({
   email,
   role,
 }: HeaderProps) {
-  const pathname = usePathname();
+  const pathname =
+    usePathname();
 
   const pageInformation =
-    getPageInformation(pathname);
+    getPageInformation(
+      pathname,
+    );
 
   const formattedRole = (
     role || "EMPLOYEE"
-  ).replaceAll("_", " ");
+  ).replaceAll(
+    "_",
+    " ",
+  );
 
   return (
     <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200 bg-white px-6 lg:px-8">
       <div>
         <h2 className="text-xl font-semibold text-slate-900">
-          {pageInformation.title}
+          {
+            pageInformation.title
+          }
         </h2>
 
         <p className="text-sm text-slate-500">
-          {pageInformation.subtitle}
+          {
+            pageInformation.subtitle
+          }
         </p>
       </div>
 
