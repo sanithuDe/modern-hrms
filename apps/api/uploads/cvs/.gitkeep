@@ -1,0 +1,9 @@
+apps/api/
+├── uploads/
+│   └── cvs/
+│       └── .gitkeep
+├── prisma/
+├── src/
+├── .env
+├── .gitignore
+└── package.json

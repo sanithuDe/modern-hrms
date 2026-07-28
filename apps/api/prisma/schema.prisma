@@ -98,6 +98,20 @@ enum CandidateStage {
   WITHDRAWN
 }
 
+enum CvAnalysisStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum HiringRecommendation {
+  HIGHLY_RECOMMENDED
+  RECOMMENDED
+  CONSIDER
+  NOT_RECOMMENDED
+}
+
 model User {
   id String @id @default(cuid())
 
@@ -188,6 +202,8 @@ model Employee {
 
   performanceReviews        PerformanceReview[] @relation("PerformanceReviewEmployee")
   performanceReviewsCreated PerformanceReview[] @relation("PerformanceReviewCreator")
+
+  candidateSubmissions Candidate[] @relation("EmployeeCandidateSubmissions")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -496,8 +512,11 @@ model Candidate {
   education String?
   address   String?
 
-  resumeFileName String?
-  resumeUrl      String?
+  resumeFileName   String?
+  resumeUrl        String?
+  resumeMimeType   String?
+  resumeSizeBytes  Int?
+  resumeUploadedAt DateTime?
 
   linkedInUrl  String?
   portfolioUrl String?
@@ -508,19 +527,86 @@ model Candidate {
 
   appliedAt DateTime @default(now())
 
+  isSelfSubmitted Boolean @default(false)
+
+  submittedByEmployeeId String?
+  submittedByEmployee   Employee? @relation("EmployeeCandidateSubmissions", fields: [submittedByEmployeeId], references: [id], onDelete: SetNull)
+
   jobOpeningId String
   jobOpening   JobOpening @relation(fields: [jobOpeningId], references: [id], onDelete: Cascade)
 
   createdById String
   createdBy   User   @relation("CandidateCreator", fields: [createdById], references: [id], onDelete: Restrict)
 
+  cvAnalysis CvAnalysis?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([jobOpeningId])
   @@index([createdById])
+  @@index([submittedByEmployeeId])
+  @@index([isSelfSubmitted])
   @@index([stage])
   @@index([email])
   @@index([firstName, lastName])
   @@index([appliedAt])
+}
+
+model CvAnalysis {
+  id String @id @default(cuid())
+
+  candidateId String    @unique
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  status CvAnalysisStatus @default(PENDING)
+
+  extractedText String?
+
+  extractedName       String?
+  extractedEmail      String?
+  extractedPhone      String?
+  extractedJobTitle   String?
+  extractedEducation  String?
+  extractedExperience String?
+  extractedSkills     Json?
+
+  localMatchScore Decimal? @db.Decimal(5, 2)
+  aiMatchScore    Decimal? @db.Decimal(5, 2)
+  finalMatchScore Decimal? @db.Decimal(5, 2)
+
+  skillsScore       Decimal? @db.Decimal(5, 2)
+  experienceScore   Decimal? @db.Decimal(5, 2)
+  jobTitleScore     Decimal? @db.Decimal(5, 2)
+  educationScore    Decimal? @db.Decimal(5, 2)
+  completenessScore Decimal? @db.Decimal(5, 2)
+
+  summary String?
+
+  matchedSkills      Json?
+  missingSkills      Json?
+  strengths          Json?
+  concerns           Json?
+  interviewQuestions Json?
+
+  recommendation HiringRecommendation?
+
+  recommendedSalaryMin    Decimal? @db.Decimal(12, 2)
+  recommendedSalaryTarget Decimal? @db.Decimal(12, 2)
+  recommendedSalaryMax    Decimal? @db.Decimal(12, 2)
+
+  salaryRecommendationReason String?
+
+  modelUsed String?
+
+  errorMessage String?
+  analyzedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([finalMatchScore])
+  @@index([recommendation])
+  @@index([analyzedAt])
 }

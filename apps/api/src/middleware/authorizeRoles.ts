@@ -3,7 +3,9 @@ import type {
     Response,
 } from "express";
 
-import type { UserRole } from "@prisma/client";
+import type {
+    UserRole,
+} from "../generated/prisma/client.js";
 
 import type {
     AuthenticatedRequest,
@@ -17,7 +19,8 @@ export function authorizeRoles(
     response: Response,
     next: NextFunction,
   ): void => {
-    const role = request.user?.role;
+    const role =
+      request.user?.role;
 
     if (!role) {
       response.status(401).json({
@@ -28,7 +31,9 @@ export function authorizeRoles(
       return;
     }
 
-    if (!allowedRoles.includes(role)) {
+    if (
+      !allowedRoles.includes(role)
+    ) {
       response.status(403).json({
         success: false,
         message:

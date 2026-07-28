@@ -1,7 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+
+import { useRouter } from "next/navigation";
 
 import Header from "../../src/components/layout/header";
 import Sidebar from "../../src/components/layout/sidebar";
@@ -11,57 +16,93 @@ interface DashboardLayoutProps {
 }
 
 interface StoredUser {
-  email?: string;
-  role?: string;
+  email: string;
+  role: string;
 }
 
 export default function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
-  const [email, setEmail] = useState(
-    "admin@example.com",
-  );
+  const router = useRouter();
 
-  const [role, setRole] = useState(
-    "EMPLOYEE",
-  );
+  const [user, setUser] =
+    useState<StoredUser | null>(null);
+
+  const [loading, setLoading] =
+    useState(true);
 
   useEffect(() => {
+    const token =
+      window.localStorage.getItem(
+        "accessToken",
+      );
+
     const storedUser =
       window.localStorage.getItem(
         "authUser",
       );
 
-    if (!storedUser) {
+    if (!token || !storedUser) {
+      setLoading(false);
+      router.replace("/login");
       return;
     }
 
     try {
-      const user = JSON.parse(
-        storedUser,
-      ) as StoredUser;
+      const parsedUser =
+        JSON.parse(
+          storedUser,
+        ) as StoredUser;
 
-      if (user.email) {
-        setEmail(user.email);
+      if (
+        !parsedUser.email ||
+        !parsedUser.role
+      ) {
+        throw new Error(
+          "Invalid stored user",
+        );
       }
 
-      if (user.role) {
-        setRole(user.role);
-      }
+      setUser(parsedUser);
     } catch {
-      setEmail("admin@example.com");
-      setRole("EMPLOYEE");
+      window.localStorage.removeItem(
+        "accessToken",
+      );
+
+      window.localStorage.removeItem(
+        "authUser",
+      );
+
+      setLoading(false);
+      router.replace("/login");
+      return;
     }
-  }, []);
+
+    setLoading(false);
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f3f6fa]">
+        <p className="text-sm text-slate-600">
+          Loading dashboard...
+        </p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-[#f3f6fa]">
-      <Sidebar role={role} />
+      <Sidebar role={user.role} />
 
       <div className="min-h-screen lg:pl-64">
         <Header
-          email={email}
-          role={role}
+          email={user.email}
+          role={user.role}
         />
 
         <main className="min-h-[calc(100vh-80px)] px-7 py-7">

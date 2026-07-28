@@ -1,20 +1,26 @@
-import axios from "axios";
+import axios, {
+    type AxiosError,
+    type InternalAxiosRequestConfig,
+} from "axios";
 
 export const api = axios.create({
   baseURL:
     process.env.NEXT_PUBLIC_API_URL ??
     "http://localhost:5000/api",
-
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 api.interceptors.request.use(
-  (config) => {
-    if (typeof window !== "undefined") {
+  (
+    config: InternalAxiosRequestConfig,
+  ) => {
+    if (
+      typeof window !==
+      "undefined"
+    ) {
       const token =
-        localStorage.getItem("accessToken");
+        window.localStorage.getItem(
+          "accessToken",
+        );
 
       if (token) {
         config.headers.Authorization =
@@ -24,21 +30,41 @@ api.interceptors.request.use(
 
     return config;
   },
-  (error) => Promise.reject(error),
+  (
+    error: AxiosError,
+  ) =>
+    Promise.reject(
+      error,
+    ),
 );
 
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response) =>
+    response,
+
+  (
+    error: AxiosError,
+  ) => {
     if (
-      typeof window !== "undefined" &&
-      error.response?.status === 401
+      typeof window !==
+        "undefined" &&
+      error.response?.status ===
+        401
     ) {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("authUser");
-      window.location.href = "/login";
+      window.localStorage.removeItem(
+        "accessToken",
+      );
+
+      window.localStorage.removeItem(
+        "authUser",
+      );
+
+      window.location.href =
+        "/login";
     }
 
-    return Promise.reject(error);
+    return Promise.reject(
+      error,
+    );
   },
 );
