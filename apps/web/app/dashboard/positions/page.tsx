@@ -436,11 +436,6 @@ export default function PositionsPage() {
       <Sidebar role={user.role} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header
-          email={user.email}
-          role={user.role}
-        />
-
         <main className="flex-1 p-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">

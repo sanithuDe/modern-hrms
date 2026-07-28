@@ -1,25 +1,40 @@
-import type { NextFunction, Response } from "express";
-import type { AuthenticatedRequest } from "./authenticate.js";
+import type {
+    NextFunction,
+    Response,
+} from "express";
 
-export function authorizeRoles(...allowedRoles: string[]) {
+import type { UserRole } from "@prisma/client";
+
+import type {
+    AuthenticatedRequest,
+} from "./authenticate.js";
+
+export function authorizeRoles(
+  ...allowedRoles: UserRole[]
+) {
   return (
     request: AuthenticatedRequest,
     response: Response,
     next: NextFunction,
   ): void => {
-    if (!request.user) {
+    const role = request.user?.role;
+
+    if (!role) {
       response.status(401).json({
         success: false,
-        message: "Authentication required",
+        message: "Unauthenticated",
       });
+
       return;
     }
 
-    if (!allowedRoles.includes(request.user.role)) {
+    if (!allowedRoles.includes(role)) {
       response.status(403).json({
         success: false,
-        message: "You do not have permission to access this resource",
+        message:
+          "You do not have permission to access this resource",
       });
+
       return;
     }
 

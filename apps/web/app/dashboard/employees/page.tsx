@@ -170,10 +170,6 @@ export default function EmployeesPage() {
       <Sidebar role={user.role} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header
-          email={user.email}
-          role={user.role}
-        />
 
         <main className="flex-1 p-8">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">

@@ -2,11 +2,11 @@ import {
     Prisma,
     UserRole,
     UserStatus,
-} from "@prisma/client";
+} from "../../generated/prisma/client.js";
+
 import bcrypt from "bcryptjs";
 
 import { prisma } from "../../lib/prisma.js";
-
 export interface CreateEmployeeInput {
   email: string;
   password: string;
@@ -176,7 +176,7 @@ export async function createEmployee(
     await bcrypt.hash(input.password, 12);
 
   return prisma.$transaction(
-    async (transaction) => {
+    async (transaction: Prisma.TransactionClient) => {
       const user =
         await transaction.user.create({
           data: {
@@ -288,6 +288,15 @@ export async function updateEmployee(
     throw new Error("Employee not found");
   }
 
+  if (
+    input.role !== undefined &&
+    !existingEmployee.userId
+  ) {
+    throw new Error(
+      "This employee does not have a linked user account",
+    );
+  }
+
   const departmentId =
     input.departmentId !== undefined
       ? input.departmentId
@@ -306,8 +315,11 @@ export async function updateEmployee(
   );
 
   return prisma.$transaction(
-    async (transaction) => {
-      if (input.role !== undefined) {
+    async (transaction: Prisma.TransactionClient) => {
+      if (
+        input.role !== undefined &&
+        existingEmployee.userId
+      ) {
         await transaction.user.update({
           where: {
             id: existingEmployee.userId,
@@ -387,6 +399,12 @@ export async function updateEmployeeStatus(
     throw new Error("Employee not found");
   }
 
+  if (!employee.userId) {
+    throw new Error(
+      "This employee does not have a linked user account",
+    );
+  }
+
   await prisma.user.update({
     where: {
       id: employee.userId,
@@ -426,7 +444,7 @@ export async function deleteEmployee(
   }
 
   if (
-    employee.user.role ===
+    employee.user?.role ===
     UserRole.SUPER_ADMIN
   ) {
     throw new Error(
@@ -435,18 +453,20 @@ export async function deleteEmployee(
   }
 
   await prisma.$transaction(
-    async (transaction) => {
+    async (transaction: Prisma.TransactionClient) => {
       await transaction.employee.delete({
         where: {
           id: employee.id,
         },
       });
 
-      await transaction.user.delete({
-        where: {
-          id: employee.userId,
-        },
-      });
+      if (employee.userId) {
+        await transaction.user.delete({
+          where: {
+            id: employee.userId,
+          },
+        });
+      }
     },
   );
 

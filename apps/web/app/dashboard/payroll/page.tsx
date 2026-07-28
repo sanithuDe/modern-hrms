@@ -22,7 +22,7 @@ import {
   type FormEvent,
 } from "react";
 
-import Header from "../../../src/components/layout/header";
+
 import Sidebar from "../../../src/components/layout/sidebar";
 
 import {
@@ -1027,11 +1027,6 @@ export default function PayrollPage() {
       <Sidebar role={user.role} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header
-          email={user.email}
-          role={user.role}
-        />
-
         <main className="flex-1 p-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">

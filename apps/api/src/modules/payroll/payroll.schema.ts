@@ -1,11 +1,14 @@
 import { z } from "zod";
 
+const idSchema = z
+  .string()
+  .trim()
+  .min(1, "ID is required");
+
 export const createSalaryProfileSchema =
   z.object({
     body: z.object({
-      employeeId: z
-        .string()
-        .uuid("Invalid employee ID"),
+      employeeId: idSchema,
 
       basicSalary: z
         .number()
@@ -32,9 +35,7 @@ export const createSalaryProfileSchema =
 export const updateSalaryProfileSchema =
   z.object({
     params: z.object({
-      employeeId: z
-        .string()
-        .uuid("Invalid employee ID"),
+      employeeId: idSchema,
     }),
 
     body: z
@@ -69,14 +70,13 @@ export const updateSalaryProfileSchema =
 export const generatePayrollSchema =
   z.object({
     body: z.object({
-      employeeId: z
-        .string()
-        .uuid("Invalid employee ID"),
+      employeeId: idSchema,
 
       year: z
         .number()
         .int()
-        .min(2000),
+        .min(2000)
+        .max(2100),
 
       month: z
         .number()
@@ -99,9 +99,7 @@ export const generatePayrollSchema =
 export const payrollIdSchema =
   z.object({
     params: z.object({
-      id: z
-        .string()
-        .uuid("Invalid payroll ID"),
+      id: idSchema,
     }),
   });
 

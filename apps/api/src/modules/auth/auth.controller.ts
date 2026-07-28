@@ -35,8 +35,9 @@ export async function meController(
       return;
     }
 
-    const user = await getCurrentUser(request.user.userId);
-
+   const user = await getCurrentUser(
+  request.user.id,
+);
     response.status(200).json({
       success: true,
       message: "Current user retrieved successfully",

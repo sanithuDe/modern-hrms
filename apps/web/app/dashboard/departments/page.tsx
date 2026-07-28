@@ -20,8 +20,6 @@ import {
     type FormEvent,
 } from "react";
 
-import Header from "../../../src/components/layout/header";
-import Sidebar from "../../../src/components/layout/sidebar";
 
 import {
     createDepartment,
@@ -378,20 +376,14 @@ export default function DepartmentsPage() {
 
   return (
     <div className="flex min-h-screen bg-slate-100">
-      <Sidebar role={user.role} />
+ 
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header
-          email={user.email}
-          role={user.role}
-        />
-
         <main className="flex-1 p-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">
               Departments
             </h1>
-
             <p className="mt-2 text-slate-600">
               Create and manage company departments.
             </p>

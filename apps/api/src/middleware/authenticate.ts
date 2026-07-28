@@ -1,16 +1,32 @@
-import type { NextFunction, Request, Response } from "express";
+import type {
+    NextFunction,
+    Request,
+    Response,
+} from "express";
+
 import jwt from "jsonwebtoken";
 
-export interface AuthenticatedRequest extends Request {
+import type {
+    UserRole,
+} from "../generated/prisma/client.js";
+
+export interface AuthenticatedRequest
+  extends Request {
   user?: {
-    userId: string;
-    role: string;
+    id: string;
+    email?: string;
+    role: UserRole;
   };
 }
 
 interface JwtPayload {
-  userId: string;
-  role: string;
+  userId?: string;
+  id?: string;
+  sub?: string;
+  email?: string;
+  role?: UserRole;
+  iat?: number;
+  exp?: number;
 }
 
 export function authenticate(
@@ -19,28 +35,70 @@ export function authenticate(
   next: NextFunction,
 ): void {
   try {
-    const authorizationHeader = request.headers.authorization;
+    const authorizationHeader =
+      request.headers.authorization;
 
-    if (!authorizationHeader?.startsWith("Bearer ")) {
+    if (!authorizationHeader) {
       response.status(401).json({
         success: false,
-        message: "Authentication token is missing",
+        message:
+          "Authentication token is missing",
       });
+
       return;
     }
 
-    const token = authorizationHeader.split(" ")[1];
+    const [scheme, token] =
+      authorizationHeader.split(" ");
 
-    const secret = process.env.JWT_ACCESS_SECRET;
+    if (
+      scheme !== "Bearer" ||
+      !token
+    ) {
+      response.status(401).json({
+        success: false,
+        message:
+          "Invalid authorization header",
+      });
 
-    if (!secret) {
-      throw new Error("JWT_ACCESS_SECRET is not configured");
+      return;
     }
 
-    const decoded = jwt.verify(token, secret) as JwtPayload;
+    const secret =
+      process.env.JWT_ACCESS_SECRET;
+
+    if (!secret) {
+      throw new Error(
+        "JWT_ACCESS_SECRET is not configured",
+      );
+    }
+
+    const decoded = jwt.verify(
+      token,
+      secret,
+    ) as JwtPayload;
+
+    const userId =
+      decoded.userId ??
+      decoded.id ??
+      decoded.sub;
+
+    if (
+      !userId ||
+      !decoded.role
+    ) {
+      response.status(401).json({
+        success: false,
+        message:
+          "Invalid token payload",
+      });
+
+      return;
+    }
 
     request.user = {
-      userId: decoded.userId,
+      id: userId,
+      email: decoded.email,
       role: decoded.role,
     };
 
@@ -48,7 +106,8 @@ export function authenticate(
   } catch {
     response.status(401).json({
       success: false,
-      message: "Invalid or expired token",
+      message:
+        "Invalid or expired token",
     });
   }
 }

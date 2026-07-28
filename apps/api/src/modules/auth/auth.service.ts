@@ -26,7 +26,11 @@ export async function loginUser(input: LoginInput) {
   if (user.status !== "ACTIVE") {
     throw new Error("Your account is not active");
   }
-
+if (!user.passwordHash) {
+  throw new Error(
+    "This user does not have a password configured",
+  );
+}
   const passwordMatches = await bcrypt.compare(
     input.password,
     user.passwordHash,

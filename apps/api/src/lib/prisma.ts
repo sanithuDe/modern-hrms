@@ -1,5 +1,6 @@
+import "dotenv/config";
+
 import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
 
 import { PrismaClient } from "../generated/prisma/client.js";
 
@@ -8,28 +9,28 @@ const connectionString =
 
 if (!connectionString) {
   throw new Error(
-    "DATABASE_URL is not configured",
+    "DATABASE_URL is not defined. Add it to apps/api/.env",
   );
 }
 
-const pool = new Pool({
+const adapter = new PrismaPg({
   connectionString,
 });
 
-const adapter = new PrismaPg(pool);
-
 const globalForPrisma =
   globalThis as unknown as {
-    payrollPrisma?: PrismaClient;
+    prisma?: PrismaClient;
   };
 
 export const prisma =
-  globalForPrisma.payrollPrisma ??
+  globalForPrisma.prisma ??
   new PrismaClient({
     adapter,
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.payrollPrisma =
-    prisma;
+if (
+  process.env.NODE_ENV !==
+  "production"
+) {
+  globalForPrisma.prisma = prisma;
 }
