@@ -1,14 +1,14 @@
 import type {
-    NextFunction,
-    Response,
+  NextFunction,
+  Response,
 } from "express";
 
 import type {
-    UserRole,
+  UserRole,
 } from "../generated/prisma/client.js";
 
 import type {
-    AuthenticatedRequest,
+  AuthenticatedRequest,
 } from "./authenticate.js";
 
 export function authorizeRoles(
@@ -19,20 +19,23 @@ export function authorizeRoles(
     response: Response,
     next: NextFunction,
   ): void => {
-    const role =
+    const userRole =
       request.user?.role;
 
-    if (!role) {
+    if (!userRole) {
       response.status(401).json({
         success: false,
-        message: "Unauthenticated",
+        message:
+          "Authentication required",
       });
 
       return;
     }
 
     if (
-      !allowedRoles.includes(role)
+      !allowedRoles.includes(
+        userRole,
+      )
     ) {
       response.status(403).json({
         success: false,

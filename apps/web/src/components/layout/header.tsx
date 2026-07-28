@@ -1,12 +1,12 @@
 "use client";
 
 import {
-  Bell,
-  Search,
+    Bell,
+    Search,
 } from "lucide-react";
 
 import {
-  usePathname,
+    usePathname,
 } from "next/navigation";
 
 interface HeaderProps {
@@ -27,9 +27,7 @@ function getPageInformation(
     "/dashboard"
   ) {
     return {
-      title:
-        "Dashboard",
-
+      title: "Dashboard",
       subtitle:
         "Welcome back to your HR workspace",
     };
@@ -41,9 +39,7 @@ function getPageInformation(
     )
   ) {
     return {
-      title:
-        "Employees",
-
+      title: "Employees",
       subtitle:
         "Create and manage employee records",
     };
@@ -57,7 +53,6 @@ function getPageInformation(
     return {
       title:
         "Departments",
-
       subtitle:
         "Create and manage company departments",
     };
@@ -69,9 +64,7 @@ function getPageInformation(
     )
   ) {
     return {
-      title:
-        "Positions",
-
+      title: "Positions",
       subtitle:
         "Create and manage employee job positions",
     };
@@ -83,9 +76,7 @@ function getPageInformation(
     )
   ) {
     return {
-      title:
-        "Payroll",
-
+      title: "Payroll",
       subtitle:
         "Manage employee salary and payroll records",
     };
@@ -97,9 +88,7 @@ function getPageInformation(
     )
   ) {
     return {
-      title:
-        "Leave",
-
+      title: "Leave",
       subtitle:
         "Manage leave balances and requests",
     };
@@ -113,7 +102,6 @@ function getPageInformation(
     return {
       title:
         "Attendance",
-
       subtitle:
         "Track check-in, check-out, and working time",
     };
@@ -127,7 +115,6 @@ function getPageInformation(
     return {
       title:
         "Performance",
-
       subtitle:
         "Monitor employee performance and progress",
     };
@@ -141,7 +128,6 @@ function getPageInformation(
     return {
       title:
         "Announcements",
-
       subtitle:
         "Create and manage company announcements",
     };
@@ -155,9 +141,8 @@ function getPageInformation(
     return {
       title:
         "Recruitment",
-
       subtitle:
-        "Manage candidates and recruitment activities",
+        "Manage job openings, candidates, and recruitment activities",
     };
   }
 
@@ -167,9 +152,7 @@ function getPageInformation(
     )
   ) {
     return {
-      title:
-        "CV Portal",
-
+      title: "CV Portal",
       subtitle:
         "Submit, analyze, and manage candidate CVs",
     };
@@ -181,18 +164,14 @@ function getPageInformation(
     )
   ) {
     return {
-      title:
-        "Settings",
-
+      title: "Settings",
       subtitle:
         "Manage HR platform settings",
     };
   }
 
   return {
-    title:
-      "Dashboard",
-
+    title: "Dashboard",
     subtitle:
       "Welcome back to your HR workspace",
   };
@@ -210,15 +189,17 @@ export default function Header({
       pathname,
     );
 
-  const formattedRole = (
-    role || "EMPLOYEE"
-  ).replaceAll(
-    "_",
-    " ",
-  );
+  const formattedRole =
+    (
+      role ||
+      "EMPLOYEE"
+    ).replaceAll(
+      "_",
+      " ",
+    );
 
   return (
-    <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200 bg-white px-6 lg:px-8">
+    <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8">
       <div>
         <h2 className="text-xl font-semibold text-slate-900">
           {
@@ -226,7 +207,7 @@ export default function Header({
           }
         </h2>
 
-        <p className="text-sm text-slate-500">
+        <p className="hidden text-sm text-slate-500 sm:block">
           {
             pageInformation.subtitle
           }
@@ -243,6 +224,7 @@ export default function Header({
           <input
             type="search"
             placeholder="Search"
+            aria-label="Search"
             className="w-44 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
           />
         </div>
@@ -252,17 +234,20 @@ export default function Header({
           aria-label="Notifications"
           className="rounded-full border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-50"
         >
-          <Bell size={18} />
+          <Bell
+            size={18}
+          />
         </button>
 
         <div className="hidden text-right sm:block">
-          <p className="text-sm font-medium text-slate-900">
-            {email ||
-              "admin@example.com"}
+          <p className="max-w-52 truncate text-sm font-medium text-slate-900">
+            {email}
           </p>
 
           <p className="text-xs text-slate-500">
-            {formattedRole}
+            {
+              formattedRole
+            }
           </p>
         </div>
       </div>

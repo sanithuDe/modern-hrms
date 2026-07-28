@@ -1,20 +1,41 @@
-import { Router } from "express";
-
-import { authenticate } from "../../middleware/authenticate.js";
-import { authorizeRoles } from "../../middleware/authorizeRoles.js";
-import { validateRequest } from "../../middleware/validateRequest.js";
 import {
-    loginController,
-    logoutController,
-    meController,
-} from "./auth.controller.js";
-import { loginSchema } from "./auth.schema.js";
+  Router,
+} from "express";
 
-const authRouter = Router();
+import {
+  UserRole,
+} from "../../generated/prisma/client.js";
+
+import {
+  authenticate,
+} from "../../middleware/authenticate.js";
+
+import {
+  authorizeRoles,
+} from "../../middleware/authorizeRoles.js";
+
+import {
+  validateRequest,
+} from "../../middleware/validateRequest.js";
+
+import {
+  loginController,
+  logoutController,
+  meController,
+} from "./auth.controller.js";
+
+import {
+  loginSchema,
+} from "./auth.schema.js";
+
+const authRouter =
+  Router();
 
 authRouter.post(
   "/login",
-  validateRequest(loginSchema),
+  validateRequest(
+    loginSchema,
+  ),
   loginController,
 );
 
@@ -31,13 +52,38 @@ authRouter.post(
 );
 
 authRouter.get(
-  "/admin-test",
+  "/super-admin-test",
   authenticate,
-  authorizeRoles("SUPER_ADMIN"),
-  (_request, response) => {
+  authorizeRoles(
+    UserRole.SUPER_ADMIN,
+  ),
+  (
+    _request,
+    response,
+  ) => {
     response.status(200).json({
       success: true,
-      message: "Super Admin authorization is working",
+      message:
+        "Super Admin authorization is working",
+    });
+  },
+);
+
+authRouter.get(
+  "/hr-manager-test",
+  authenticate,
+  authorizeRoles(
+    UserRole.SUPER_ADMIN,
+    UserRole.HR_MANAGER,
+  ),
+  (
+    _request,
+    response,
+  ) => {
+    response.status(200).json({
+      success: true,
+      message:
+        "HR Manager authorization is working",
     });
   },
 );
