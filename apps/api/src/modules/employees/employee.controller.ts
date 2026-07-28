@@ -1,13 +1,16 @@
+import type {
+  NextFunction,
+  Response,
+} from "express";
+
 import {
   UserRole,
   UserStatus,
-} from "@prisma/client";
+} from "../../generated/prisma/client.js";
 
 import type {
-  NextFunction,
-  Request,
-  Response,
-} from "express";
+  AuthenticatedRequest,
+} from "../../middleware/authenticate.js";
 
 import {
   createEmployee,
@@ -19,29 +22,8 @@ import {
   updateEmployeeStatus,
 } from "./employee.service.js";
 
-type AuthenticatedRequest = Request & {
-  user?: {
-    id?: string;
-    userId?: string;
-    sub?: string;
-  };
-};
-
-function getRequestUserId(
-  request: Request,
-): string | undefined {
-  const authenticatedRequest =
-    request as AuthenticatedRequest;
-
-  return (
-    authenticatedRequest.user?.id ??
-    authenticatedRequest.user?.userId ??
-    authenticatedRequest.user?.sub
-  );
-}
-
 function getRequiredEmployeeId(
-  request: Request,
+  request: AuthenticatedRequest,
 ): string | null {
   const id = request.params.id;
 
@@ -52,7 +34,7 @@ function getRequiredEmployeeId(
     return null;
   }
 
-  return id;
+  return id.trim();
 }
 
 function isUserRole(
@@ -78,12 +60,25 @@ function isUserStatus(
 }
 
 export async function createEmployeeController(
-  request: Request,
+  request: AuthenticatedRequest,
   response: Response,
   next: NextFunction,
 ): Promise<void> {
   try {
-    const role = request.body.role;
+    const authenticatedUser =
+      request.user;
+
+    if (!authenticatedUser) {
+      response.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+
+      return;
+    }
+
+    const role =
+      request.body.role;
 
     if (!isUserRole(role)) {
       response.status(400).json({
@@ -94,25 +89,62 @@ export async function createEmployeeController(
       return;
     }
 
-    const employee = await createEmployee({
-      email: request.body.email,
-      password: request.body.password,
-      role,
-      employeeNumber:
-        request.body.employeeNumber,
-      firstName:
-        request.body.firstName,
-      lastName:
-        request.body.lastName,
-      phone:
-        request.body.phone,
-      hireDate:
-        request.body.hireDate,
-      departmentId:
-        request.body.departmentId,
-      positionId:
-        request.body.positionId,
-    });
+    /*
+     * Nobody can create another
+     * Super Admin from this endpoint.
+     */
+    if (
+      role === UserRole.SUPER_ADMIN
+    ) {
+      response.status(403).json({
+        success: false,
+        message:
+          "Super Admin accounts cannot be created from the employee section",
+      });
+
+      return;
+    }
+
+    /*
+     * HR Manager can only create
+     * normal Employee accounts.
+     */
+    if (
+      authenticatedUser.role ===
+        UserRole.HR_MANAGER &&
+      role !== UserRole.EMPLOYEE
+    ) {
+      response.status(403).json({
+        success: false,
+        message:
+          "HR Managers can only create Employee accounts",
+      });
+
+      return;
+    }
+
+    const employee =
+      await createEmployee({
+        email:
+          request.body.email,
+        password:
+          request.body.password,
+        role,
+        employeeNumber:
+          request.body.employeeNumber,
+        firstName:
+          request.body.firstName,
+        lastName:
+          request.body.lastName,
+        phone:
+          request.body.phone,
+        hireDate:
+          request.body.hireDate,
+        departmentId:
+          request.body.departmentId,
+        positionId:
+          request.body.positionId,
+      });
 
     response.status(201).json({
       success: true,
@@ -126,7 +158,7 @@ export async function createEmployeeController(
 }
 
 export async function getEmployeesController(
-  _request: Request,
+  _request: AuthenticatedRequest,
   response: Response,
   next: NextFunction,
 ): Promise<void> {
@@ -146,7 +178,7 @@ export async function getEmployeesController(
 }
 
 export async function getEmployeeByIdController(
-  request: Request,
+  request: AuthenticatedRequest,
   response: Response,
   next: NextFunction,
 ): Promise<void> {
@@ -157,7 +189,8 @@ export async function getEmployeeByIdController(
     if (!id) {
       response.status(400).json({
         success: false,
-        message: "Employee ID is required",
+        message:
+          "Employee ID is required",
       });
 
       return;
@@ -178,25 +211,28 @@ export async function getEmployeeByIdController(
 }
 
 export async function getCurrentEmployeeController(
-  request: Request,
+  request: AuthenticatedRequest,
   response: Response,
   next: NextFunction,
 ): Promise<void> {
   try {
     const userId =
-      getRequestUserId(request);
+      request.user?.id;
 
     if (!userId) {
       response.status(401).json({
         success: false,
-        message: "Authentication required",
+        message:
+          "Authentication required",
       });
 
       return;
     }
 
     const employee =
-      await getMyEmployeeProfile(userId);
+      await getMyEmployeeProfile(
+        userId,
+      );
 
     response.status(200).json({
       success: true,
@@ -210,24 +246,39 @@ export async function getCurrentEmployeeController(
 }
 
 export async function updateEmployeeController(
-  request: Request,
+  request: AuthenticatedRequest,
   response: Response,
   next: NextFunction,
 ): Promise<void> {
   try {
+    const authenticatedUser =
+      request.user;
+
+    if (!authenticatedUser) {
+      response.status(401).json({
+        success: false,
+        message:
+          "Authentication required",
+      });
+
+      return;
+    }
+
     const id =
       getRequiredEmployeeId(request);
 
     if (!id) {
       response.status(400).json({
         success: false,
-        message: "Employee ID is required",
+        message:
+          "Employee ID is required",
       });
 
       return;
     }
 
-    const role = request.body.role;
+    const role =
+      request.body.role;
 
     if (
       role !== undefined &&
@@ -235,7 +286,41 @@ export async function updateEmployeeController(
     ) {
       response.status(400).json({
         success: false,
-        message: "Invalid employee role",
+        message:
+          "Invalid employee role",
+      });
+
+      return;
+    }
+
+    /*
+     * Nobody can promote an employee
+     * to Super Admin here.
+     */
+    if (
+      role === UserRole.SUPER_ADMIN
+    ) {
+      response.status(403).json({
+        success: false,
+        message:
+          "An employee cannot be promoted to Super Admin",
+      });
+
+      return;
+    }
+
+    /*
+     * HR Manager cannot change roles.
+     */
+    if (
+      authenticatedUser.role ===
+        UserRole.HR_MANAGER &&
+      role !== undefined
+    ) {
+      response.status(403).json({
+        success: false,
+        message:
+          "HR Managers cannot change employee roles",
       });
 
       return;
@@ -256,6 +341,8 @@ export async function updateEmployeeController(
         positionId:
           request.body.positionId,
         role,
+        requesterRole:
+          authenticatedUser.role,
       });
 
     response.status(200).json({
@@ -270,25 +357,39 @@ export async function updateEmployeeController(
 }
 
 export async function updateEmployeeStatusController(
-  request: Request,
+  request: AuthenticatedRequest,
   response: Response,
   next: NextFunction,
 ): Promise<void> {
   try {
-    const id =
-      getRequiredEmployeeId(request);
+    const authenticatedUser =
+      request.user;
 
-    const status =
-      request.body.status;
-
-    if (!id) {
-      response.status(400).json({
+    if (!authenticatedUser) {
+      response.status(401).json({
         success: false,
-        message: "Employee ID is required",
+        message:
+          "Authentication required",
       });
 
       return;
     }
+
+    const id =
+      getRequiredEmployeeId(request);
+
+    if (!id) {
+      response.status(400).json({
+        success: false,
+        message:
+          "Employee ID is required",
+      });
+
+      return;
+    }
+
+    const status =
+      request.body.status;
 
     if (!isUserStatus(status)) {
       response.status(400).json({
@@ -301,9 +402,14 @@ export async function updateEmployeeStatusController(
     }
 
     const employee =
-      await updateEmployeeStatus(id, {
-        status,
-      });
+      await updateEmployeeStatus(
+        id,
+        {
+          status,
+          requesterRole:
+            authenticatedUser.role,
+        },
+      );
 
     response.status(200).json({
       success: true,
@@ -317,7 +423,7 @@ export async function updateEmployeeStatusController(
 }
 
 export async function deleteEmployeeController(
-  request: Request,
+  request: AuthenticatedRequest,
   response: Response,
   next: NextFunction,
 ): Promise<void> {
@@ -328,7 +434,8 @@ export async function deleteEmployeeController(
     if (!id) {
       response.status(400).json({
         success: false,
-        message: "Employee ID is required",
+        message:
+          "Employee ID is required",
       });
 
       return;

@@ -1,12 +1,13 @@
-import {
-    Prisma,
-    UserRole,
-    UserStatus,
-} from "../../generated/prisma/client.js";
-
 import bcrypt from "bcryptjs";
 
+import {
+  Prisma,
+  UserRole,
+  UserStatus,
+} from "../../generated/prisma/client.js";
+
 import { prisma } from "../../lib/prisma.js";
+
 export interface CreateEmployeeInput {
   email: string;
   password: string;
@@ -15,7 +16,7 @@ export interface CreateEmployeeInput {
   firstName: string;
   lastName: string;
   phone?: string;
-  hireDate: string;
+  hireDate: string | Date;
   departmentId?: string | null;
   positionId?: string | null;
 }
@@ -24,14 +25,16 @@ export interface UpdateEmployeeInput {
   firstName?: string;
   lastName?: string;
   phone?: string | null;
-  hireDate?: string;
+  hireDate?: string | Date;
   departmentId?: string | null;
   positionId?: string | null;
   role?: UserRole;
+  requesterRole: UserRole;
 }
 
 export interface UpdateEmployeeStatusInput {
   status: UserStatus;
+  requesterRole: UserRole;
 }
 
 const employeeInclude = {
@@ -59,8 +62,29 @@ const employeeInclude = {
   },
 } satisfies Prisma.EmployeeInclude;
 
+function parseDate(
+  value: string | Date,
+  fieldName: string,
+): Date {
+  const date =
+    value instanceof Date
+      ? value
+      : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(
+      `${fieldName} must be a valid date`,
+    );
+  }
+
+  return date;
+}
+
 async function validateDepartment(
-  departmentId: string | null | undefined,
+  departmentId:
+    | string
+    | null
+    | undefined,
 ): Promise<void> {
   if (!departmentId) {
     return;
@@ -71,7 +95,6 @@ async function validateDepartment(
       where: {
         id: departmentId,
       },
-
       select: {
         id: true,
       },
@@ -85,8 +108,14 @@ async function validateDepartment(
 }
 
 async function validatePosition(
-  positionId: string | null | undefined,
-  departmentId: string | null | undefined,
+  positionId:
+    | string
+    | null
+    | undefined,
+  departmentId:
+    | string
+    | null
+    | undefined,
 ): Promise<void> {
   if (!positionId) {
     return;
@@ -97,7 +126,6 @@ async function validatePosition(
       where: {
         id: positionId,
       },
-
       select: {
         id: true,
         departmentId: true,
@@ -129,12 +157,51 @@ export async function createEmployee(
   const employeeNumber =
     input.employeeNumber.trim();
 
+  const firstName =
+    input.firstName.trim();
+
+  const lastName =
+    input.lastName.trim();
+
+  if (!email) {
+    throw new Error("Email is required");
+  }
+
+  if (!employeeNumber) {
+    throw new Error(
+      "Employee number is required",
+    );
+  }
+
+  if (!firstName) {
+    throw new Error(
+      "First name is required",
+    );
+  }
+
+  if (!lastName) {
+    throw new Error(
+      "Last name is required",
+    );
+  }
+
+  if (!input.password) {
+    throw new Error(
+      "Password is required",
+    );
+  }
+
+  if (input.role === UserRole.SUPER_ADMIN) {
+    throw new Error(
+      "Super Admin accounts cannot be created from the employee section",
+    );
+  }
+
   const existingUser =
     await prisma.user.findUnique({
       where: {
         email,
       },
-
       select: {
         id: true,
       },
@@ -151,7 +218,6 @@ export async function createEmployee(
       where: {
         employeeNumber,
       },
-
       select: {
         id: true,
       },
@@ -172,11 +238,23 @@ export async function createEmployee(
     input.departmentId,
   );
 
+  const hireDate =
+    parseDate(
+      input.hireDate,
+      "Hire date",
+    );
+
   const passwordHash =
-    await bcrypt.hash(input.password, 12);
+    await bcrypt.hash(
+      input.password,
+      12,
+    );
 
   return prisma.$transaction(
-    async (transaction: Prisma.TransactionClient) => {
+    async (
+      transaction:
+        Prisma.TransactionClient,
+    ) => {
       const user =
         await transaction.user.create({
           data: {
@@ -191,20 +269,16 @@ export async function createEmployee(
         data: {
           userId: user.id,
           employeeNumber,
-          firstName:
-            input.firstName.trim(),
-          lastName:
-            input.lastName.trim(),
+          firstName,
+          lastName,
           phone:
             input.phone?.trim() || null,
-          hireDate:
-            new Date(input.hireDate),
+          hireDate,
           departmentId:
             input.departmentId || null,
           positionId:
             input.positionId || null,
         },
-
         include: employeeInclude,
       });
     },
@@ -214,7 +288,6 @@ export async function createEmployee(
 export async function getEmployees() {
   return prisma.employee.findMany({
     include: employeeInclude,
-
     orderBy: [
       {
         firstName: "asc",
@@ -234,12 +307,13 @@ export async function getEmployeeById(
       where: {
         id,
       },
-
       include: employeeInclude,
     });
 
   if (!employee) {
-    throw new Error("Employee not found");
+    throw new Error(
+      "Employee not found",
+    );
   }
 
   return employee;
@@ -253,7 +327,6 @@ export async function getMyEmployeeProfile(
       where: {
         userId,
       },
-
       include: employeeInclude,
     });
 
@@ -275,17 +348,50 @@ export async function updateEmployee(
       where: {
         id,
       },
-
       select: {
         id: true,
         userId: true,
         departmentId: true,
         positionId: true,
+        user: {
+          select: {
+            role: true,
+          },
+        },
       },
     });
 
   if (!existingEmployee) {
-    throw new Error("Employee not found");
+    throw new Error(
+      "Employee not found",
+    );
+  }
+
+  if (
+    existingEmployee.user?.role ===
+    UserRole.SUPER_ADMIN
+  ) {
+    throw new Error(
+      "A Super Admin employee cannot be modified from the employee section",
+    );
+  }
+
+  if (
+    input.role === UserRole.SUPER_ADMIN
+  ) {
+    throw new Error(
+      "An employee cannot be promoted to Super Admin",
+    );
+  }
+
+  if (
+    input.requesterRole ===
+      UserRole.HR_MANAGER &&
+    input.role !== undefined
+  ) {
+    throw new Error(
+      "HR Managers cannot change employee roles",
+    );
   }
 
   if (
@@ -302,29 +408,104 @@ export async function updateEmployee(
       ? input.departmentId
       : existingEmployee.departmentId;
 
-  const positionId =
+  let positionId =
     input.positionId !== undefined
       ? input.positionId
       : existingEmployee.positionId;
 
-  await validateDepartment(departmentId);
+  if (
+    input.departmentId !== undefined &&
+    input.positionId === undefined &&
+    input.departmentId !==
+      existingEmployee.departmentId
+  ) {
+    positionId = null;
+  }
+
+  await validateDepartment(
+    departmentId,
+  );
 
   await validatePosition(
     positionId,
     departmentId,
   );
 
+  const employeeData:
+    Prisma.EmployeeUncheckedUpdateInput =
+      {};
+
+  if (input.firstName !== undefined) {
+    const firstName =
+      input.firstName.trim();
+
+    if (!firstName) {
+      throw new Error(
+        "First name cannot be empty",
+      );
+    }
+
+    employeeData.firstName =
+      firstName;
+  }
+
+  if (input.lastName !== undefined) {
+    const lastName =
+      input.lastName.trim();
+
+    if (!lastName) {
+      throw new Error(
+        "Last name cannot be empty",
+      );
+    }
+
+    employeeData.lastName =
+      lastName;
+  }
+
+  if (input.phone !== undefined) {
+    employeeData.phone =
+      input.phone?.trim() || null;
+  }
+
+  if (input.hireDate !== undefined) {
+    employeeData.hireDate =
+      parseDate(
+        input.hireDate,
+        "Hire date",
+      );
+  }
+
+  if (
+    input.departmentId !== undefined
+  ) {
+    employeeData.departmentId =
+      input.departmentId;
+  }
+
+  if (
+    input.positionId !== undefined ||
+    positionId !==
+      existingEmployee.positionId
+  ) {
+    employeeData.positionId =
+      positionId;
+  }
+
   return prisma.$transaction(
-    async (transaction: Prisma.TransactionClient) => {
+    async (
+      transaction:
+        Prisma.TransactionClient,
+    ) => {
       if (
         input.role !== undefined &&
         existingEmployee.userId
       ) {
         await transaction.user.update({
           where: {
-            id: existingEmployee.userId,
+            id:
+              existingEmployee.userId,
           },
-
           data: {
             role: input.role,
           },
@@ -335,44 +516,7 @@ export async function updateEmployee(
         where: {
           id,
         },
-
-        data: {
-          ...(input.firstName !==
-            undefined && {
-            firstName:
-              input.firstName.trim(),
-          }),
-
-          ...(input.lastName !==
-            undefined && {
-            lastName:
-              input.lastName.trim(),
-          }),
-
-          ...(input.phone !== undefined && {
-            phone:
-              input.phone?.trim() || null,
-          }),
-
-          ...(input.hireDate !==
-            undefined && {
-            hireDate:
-              new Date(input.hireDate),
-          }),
-
-          ...(input.departmentId !==
-            undefined && {
-            departmentId:
-              input.departmentId,
-          }),
-
-          ...(input.positionId !==
-            undefined && {
-            positionId:
-              input.positionId,
-          }),
-        },
-
+        data: employeeData,
         include: employeeInclude,
       });
     },
@@ -388,15 +532,21 @@ export async function updateEmployeeStatus(
       where: {
         id,
       },
-
       select: {
         id: true,
         userId: true,
+        user: {
+          select: {
+            role: true,
+          },
+        },
       },
     });
 
   if (!employee) {
-    throw new Error("Employee not found");
+    throw new Error(
+      "Employee not found",
+    );
   }
 
   if (!employee.userId) {
@@ -405,11 +555,30 @@ export async function updateEmployeeStatus(
     );
   }
 
+  if (
+    input.requesterRole !==
+      UserRole.SUPER_ADMIN &&
+    input.requesterRole !==
+      UserRole.HR_MANAGER
+  ) {
+    throw new Error(
+      "You do not have permission to change employee status",
+    );
+  }
+
+  if (
+    employee.user?.role ===
+    UserRole.SUPER_ADMIN
+  ) {
+    throw new Error(
+      "A Super Admin account status cannot be changed",
+    );
+  }
+
   await prisma.user.update({
     where: {
       id: employee.userId,
     },
-
     data: {
       status: input.status,
     },
@@ -426,11 +595,9 @@ export async function deleteEmployee(
       where: {
         id,
       },
-
       select: {
         id: true,
         userId: true,
-
         user: {
           select: {
             role: true,
@@ -440,7 +607,9 @@ export async function deleteEmployee(
     });
 
   if (!employee) {
-    throw new Error("Employee not found");
+    throw new Error(
+      "Employee not found",
+    );
   }
 
   if (
@@ -453,7 +622,10 @@ export async function deleteEmployee(
   }
 
   await prisma.$transaction(
-    async (transaction: Prisma.TransactionClient) => {
+    async (
+      transaction:
+        Prisma.TransactionClient,
+    ) => {
       await transaction.employee.delete({
         where: {
           id: employee.id,

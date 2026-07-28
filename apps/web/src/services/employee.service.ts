@@ -124,13 +124,16 @@ export async function updateEmployee(
 export async function updateEmployeeStatus(
   id: string,
   status: UserStatus,
-): Promise<void> {
-  await api.patch(
-    `/employees/${id}/status`,
-    {
-      status,
-    },
-  );
+): Promise<Employee> {
+  const response =
+    await api.patch<EmployeeResponse>(
+      `/employees/${id}/status`,
+      {
+        status,
+      },
+    );
+
+  return response.data.data;
 }
 
 export async function deleteEmployee(

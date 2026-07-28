@@ -2,41 +2,41 @@
 
 import axios from "axios";
 import {
-    ArrowLeft,
-    Ban,
-    BriefcaseBusiness,
-    Building2,
-    CalendarDays,
-    CheckCircle2,
-    Mail,
-    Pencil,
-    Phone,
-    ShieldCheck,
-    Trash2,
-    UserRound,
-    UserX,
+  ArrowLeft,
+  Ban,
+  BriefcaseBusiness,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  Mail,
+  Pencil,
+  Phone,
+  ShieldCheck,
+  Trash2,
+  UserRound,
+  UserX,
 } from "lucide-react";
 import Link from "next/link";
 import {
-    useParams,
-    useRouter,
+  useParams,
+  useRouter,
 } from "next/navigation";
 import {
-    useEffect,
-    useState,
-    type ReactNode,
+  useEffect,
+  useState,
+  type ReactNode,
 } from "react";
 
 import Header from "../../../../src/components/layout/header";
 import Sidebar from "../../../../src/components/layout/sidebar";
 
 import {
-    deleteEmployee,
-    getEmployeeById,
-    updateEmployeeStatus,
-    type Employee,
-    type UserRole,
-    type UserStatus,
+  deleteEmployee,
+  getEmployeeById,
+  updateEmployeeStatus,
+  type Employee,
+  type UserRole,
+  type UserStatus,
 } from "../../../../src/services/employee.service";
 
 interface StoredUser {
@@ -50,7 +50,9 @@ interface DetailCardProps {
   value: string;
 }
 
-function formatText(value: string): string {
+function formatText(
+  value: string,
+): string {
   return value
     .toLowerCase()
     .split("_")
@@ -62,18 +64,28 @@ function formatText(value: string): string {
     .join(" ");
 }
 
-function formatDate(dateValue: string): string {
-  const date = new Date(dateValue);
+function formatDate(
+  dateValue: string | null,
+): string {
+  if (!dateValue) {
+    return "Not provided";
+  }
+
+  const date =
+    new Date(dateValue);
 
   if (Number.isNaN(date.getTime())) {
     return "Invalid date";
   }
 
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(date);
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    },
+  ).format(date);
 }
 
 function getStatusClassName(
@@ -112,9 +124,27 @@ function getModalIconClassName(
   }
 }
 
+function getErrorMessage(
+  error: unknown,
+  fallbackMessage: string,
+): string {
+  if (axios.isAxiosError(error)) {
+    const message =
+      error.response?.data?.message;
+
+    if (typeof message === "string") {
+      return message;
+    }
+  }
+
+  return fallbackMessage;
+}
+
 export default function EmployeeDetailsPage() {
   const router = useRouter();
-  const params = useParams<{ id: string }>();
+
+  const params =
+    useParams<{ id: string }>();
 
   const [user, setUser] =
     useState<StoredUser | null>(null);
@@ -125,14 +155,22 @@ export default function EmployeeDetailsPage() {
   const [isLoading, setIsLoading] =
     useState(true);
 
-  const [isUpdatingStatus, setIsUpdatingStatus] =
-    useState(false);
+  const [
+    isUpdatingStatus,
+    setIsUpdatingStatus,
+  ] = useState(false);
 
-  const [pendingStatus, setPendingStatus] =
-    useState<UserStatus | null>(null);
+  const [
+    pendingStatus,
+    setPendingStatus,
+  ] = useState<UserStatus | null>(
+    null,
+  );
 
-  const [isDeleteModalOpen, setIsDeleteModalOpen] =
-    useState(false);
+  const [
+    isDeleteModalOpen,
+    setIsDeleteModalOpen,
+  ] = useState(false);
 
   const [isDeleting, setIsDeleting] =
     useState(false);
@@ -140,15 +178,21 @@ export default function EmployeeDetailsPage() {
   const [error, setError] =
     useState("");
 
-  const [statusMessage, setStatusMessage] =
-    useState("");
+  const [
+    statusMessage,
+    setStatusMessage,
+  ] = useState("");
 
   useEffect(() => {
     const token =
-      localStorage.getItem("accessToken");
+      window.localStorage.getItem(
+        "accessToken",
+      );
 
     const storedUser =
-      localStorage.getItem("authUser");
+      window.localStorage.getItem(
+        "authUser",
+      );
 
     if (!token || !storedUser) {
       router.replace("/login");
@@ -157,12 +201,38 @@ export default function EmployeeDetailsPage() {
 
     try {
       const parsedUser =
-        JSON.parse(storedUser) as StoredUser;
+        JSON.parse(
+          storedUser,
+        ) as StoredUser;
+
+      if (
+        !parsedUser.email ||
+        !parsedUser.role
+      ) {
+        throw new Error(
+          "Invalid stored user",
+        );
+      }
+
+      if (
+        parsedUser.role !==
+          "SUPER_ADMIN" &&
+        parsedUser.role !==
+          "HR_MANAGER"
+      ) {
+        router.replace("/dashboard");
+        return;
+      }
 
       setUser(parsedUser);
     } catch {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("authUser");
+      window.localStorage.removeItem(
+        "accessToken",
+      );
+
+      window.localStorage.removeItem(
+        "authUser",
+      );
 
       router.replace("/login");
     }
@@ -180,24 +250,18 @@ export default function EmployeeDetailsPage() {
         setStatusMessage("");
 
         const employeeData =
-          await getEmployeeById(params.id);
+          await getEmployeeById(
+            params.id,
+          );
 
         setEmployee(employeeData);
       } catch (requestError: unknown) {
-        if (axios.isAxiosError(requestError)) {
-          const message =
-            requestError.response?.data?.message;
-
-          setError(
-            typeof message === "string"
-              ? message
-              : "Unable to load employee details.",
-          );
-        } else {
-          setError(
+        setError(
+          getErrorMessage(
+            requestError,
             "Unable to load employee details.",
-          );
-        }
+          ),
+        );
       } finally {
         setIsLoading(false);
       }
@@ -206,15 +270,43 @@ export default function EmployeeDetailsPage() {
     void loadEmployee();
   }, [params.id, user]);
 
+  const targetIsSuperAdmin =
+    employee?.user.role ===
+    "SUPER_ADMIN";
+
+  const canManageEmployee =
+    Boolean(
+      employee &&
+        !targetIsSuperAdmin &&
+        (
+          user?.role ===
+            "SUPER_ADMIN" ||
+          user?.role ===
+            "HR_MANAGER"
+        ),
+    );
+
+  const canDeleteEmployee =
+    Boolean(
+      employee &&
+        !targetIsSuperAdmin &&
+        user?.role ===
+          "SUPER_ADMIN",
+    );
+
   function openStatusConfirmation(
     newStatus: UserStatus,
-  ) {
+  ): void {
+    if (!canManageEmployee) {
+      return;
+    }
+
     setPendingStatus(newStatus);
     setError("");
     setStatusMessage("");
   }
 
-  function closeStatusConfirmation() {
+  function closeStatusConfirmation(): void {
     if (isUpdatingStatus) {
       return;
     }
@@ -222,12 +314,15 @@ export default function EmployeeDetailsPage() {
     setPendingStatus(null);
   }
 
-  async function confirmStatusChange() {
-    if (!employee || !pendingStatus) {
+  async function confirmStatusChange(): Promise<void> {
+    if (
+      !employee ||
+      !pendingStatus ||
+      !canManageEmployee
+    ) {
       return;
     }
 
-    const employeeId = employee.id;
     const statusLabel =
       formatText(pendingStatus);
 
@@ -236,47 +331,41 @@ export default function EmployeeDetailsPage() {
       setError("");
       setStatusMessage("");
 
-      await updateEmployeeStatus(
-        employeeId,
-        pendingStatus,
-      );
+      const updatedEmployee =
+        await updateEmployeeStatus(
+          employee.id,
+          pendingStatus,
+        );
 
-      const refreshedEmployee =
-        await getEmployeeById(employeeId);
-
-      setEmployee(refreshedEmployee);
+      setEmployee(updatedEmployee);
       setPendingStatus(null);
 
       setStatusMessage(
         `Employee status changed to ${statusLabel}.`,
       );
     } catch (requestError: unknown) {
-      if (axios.isAxiosError(requestError)) {
-        const message =
-          requestError.response?.data?.message;
-
-        setError(
-          typeof message === "string"
-            ? message
-            : "Unable to update employee status.",
-        );
-      } else {
-        setError(
+      setError(
+        getErrorMessage(
+          requestError,
           "Unable to update employee status.",
-        );
-      }
+        ),
+      );
     } finally {
       setIsUpdatingStatus(false);
     }
   }
 
-  function openDeleteConfirmation() {
+  function openDeleteConfirmation(): void {
+    if (!canDeleteEmployee) {
+      return;
+    }
+
     setError("");
     setStatusMessage("");
     setIsDeleteModalOpen(true);
   }
 
-  function closeDeleteConfirmation() {
+  function closeDeleteConfirmation(): void {
     if (isDeleting) {
       return;
     }
@@ -284,8 +373,11 @@ export default function EmployeeDetailsPage() {
     setIsDeleteModalOpen(false);
   }
 
-  async function confirmDeleteEmployee() {
-    if (!employee) {
+  async function confirmDeleteEmployee(): Promise<void> {
+    if (
+      !employee ||
+      !canDeleteEmployee
+    ) {
       return;
     }
 
@@ -295,23 +387,18 @@ export default function EmployeeDetailsPage() {
 
       await deleteEmployee(employee.id);
 
-      router.push("/dashboard/employees");
+      router.push(
+        "/dashboard/employees",
+      );
+
       router.refresh();
     } catch (requestError: unknown) {
-      if (axios.isAxiosError(requestError)) {
-        const message =
-          requestError.response?.data?.message;
-
-        setError(
-          typeof message === "string"
-            ? message
-            : "Unable to delete employee.",
-        );
-      } else {
-        setError(
+      setError(
+        getErrorMessage(
+          requestError,
           "Unable to delete employee.",
-        );
-      }
+        ),
+      );
 
       setIsDeleteModalOpen(false);
     } finally {
@@ -361,11 +448,12 @@ export default function EmployeeDetailsPage() {
               </div>
             )}
 
-            {statusMessage && !isLoading && (
-              <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm font-medium text-emerald-700">
-                {statusMessage}
-              </div>
-            )}
+            {statusMessage &&
+              !isLoading && (
+                <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm font-medium text-emerald-700">
+                  {statusMessage}
+                </div>
+              )}
 
             {employee &&
               employee.user &&
@@ -376,37 +464,56 @@ export default function EmployeeDetailsPage() {
                       <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                         <div className="flex items-center gap-4">
                           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-900 text-white">
-                            <UserRound size={30} />
+                            <UserRound
+                              size={30}
+                            />
                           </div>
 
                           <div>
                             <h1 className="text-3xl font-bold text-slate-900">
-                              {employee.firstName}{" "}
-                              {employee.lastName}
+                              {
+                                employee.firstName
+                              }{" "}
+                              {
+                                employee.lastName
+                              }
                             </h1>
 
                             <p className="mt-1 text-slate-600">
-                              {employee.employeeNumber}
+                              {
+                                employee.employeeNumber
+                              }
                             </p>
                           </div>
                         </div>
 
                         <span
                           className={`w-fit rounded-full px-4 py-2 text-sm font-semibold ${getStatusClassName(
-                            employee.user.status,
+                            employee.user
+                              .status,
                           )}`}
                         >
                           {formatText(
-                            employee.user.status,
+                            employee.user
+                              .status,
                           )}
                         </span>
                       </div>
 
-                      {(user.role === "SUPER_ADMIN" ||
-                        user.role ===
-                          "HR_MANAGER") && (
+                      {targetIsSuperAdmin && (
+                        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
+                          Super Admin accounts
+                          cannot be edited,
+                          suspended, deactivated,
+                          or deleted from the
+                          Employee section.
+                        </div>
+                      )}
+
+                      {canManageEmployee && (
                         <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-5">
-                          {employee.user.status !==
+                          {employee.user
+                            .status !==
                             "ACTIVE" && (
                             <button
                               type="button"
@@ -427,7 +534,8 @@ export default function EmployeeDetailsPage() {
                             </button>
                           )}
 
-                          {employee.user.status !==
+                          {employee.user
+                            .status !==
                             "SUSPENDED" && (
                             <button
                               type="button"
@@ -441,12 +549,15 @@ export default function EmployeeDetailsPage() {
                               }
                               className="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                              <Ban size={17} />
+                              <Ban
+                                size={17}
+                              />
                               Suspend
                             </button>
                           )}
 
-                          {employee.user.status !==
+                          {employee.user
+                            .status !==
                             "INACTIVE" && (
                             <button
                               type="button"
@@ -460,7 +571,9 @@ export default function EmployeeDetailsPage() {
                               }
                               className="inline-flex items-center gap-2 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                              <UserX size={17} />
+                              <UserX
+                                size={17}
+                              />
                               Mark Inactive
                             </button>
                           )}
@@ -469,21 +582,26 @@ export default function EmployeeDetailsPage() {
                             href={`/dashboard/employees/${employee.id}/edit`}
                             className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white hover:bg-slate-800"
                           >
-                            <Pencil size={17} />
+                            <Pencil
+                              size={17}
+                            />
                             Edit Employee
                           </Link>
 
-                          {user.role ===
-                            "SUPER_ADMIN" && (
+                          {canDeleteEmployee && (
                             <button
                               type="button"
-                              disabled={isDeleting}
+                              disabled={
+                                isDeleting
+                              }
                               onClick={
                                 openDeleteConfirmation
                               }
                               className="inline-flex items-center gap-2 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                              <Trash2 size={17} />
+                              <Trash2
+                                size={17}
+                              />
                               Delete Employee
                             </button>
                           )}
@@ -494,14 +612,20 @@ export default function EmployeeDetailsPage() {
 
                   <div className="mt-6 grid gap-6 md:grid-cols-2">
                     <DetailCard
-                      icon={<Mail size={20} />}
+                      icon={
+                        <Mail size={20} />
+                      }
                       label="Email"
-                      value={employee.user.email}
+                      value={
+                        employee.user.email
+                      }
                     />
 
                     <DetailCard
                       icon={
-                        <ShieldCheck size={20} />
+                        <ShieldCheck
+                          size={20}
+                        />
                       }
                       label="Role"
                       value={formatText(
@@ -510,7 +634,9 @@ export default function EmployeeDetailsPage() {
                     />
 
                     <DetailCard
-                      icon={<Phone size={20} />}
+                      icon={
+                        <Phone size={20} />
+                      }
                       label="Phone"
                       value={
                         employee.phone ||
@@ -520,7 +646,9 @@ export default function EmployeeDetailsPage() {
 
                     <DetailCard
                       icon={
-                        <CalendarDays size={20} />
+                        <CalendarDays
+                          size={20}
+                        />
                       }
                       label="Hire date"
                       value={formatDate(
@@ -529,10 +657,15 @@ export default function EmployeeDetailsPage() {
                     />
 
                     <DetailCard
-                      icon={<Building2 size={20} />}
+                      icon={
+                        <Building2
+                          size={20}
+                        />
+                      }
                       label="Department"
                       value={
-                        employee.department?.name ??
+                        employee.department
+                          ?.name ??
                         "Not assigned"
                       }
                     />
@@ -545,14 +678,17 @@ export default function EmployeeDetailsPage() {
                       }
                       label="Position"
                       value={
-                        employee.position?.title ??
+                        employee.position
+                          ?.title ??
                         "Not assigned"
                       }
                     />
 
                     <DetailCard
                       icon={
-                        <CalendarDays size={20} />
+                        <CalendarDays
+                          size={20}
+                        />
                       }
                       label="Created date"
                       value={formatDate(
@@ -561,7 +697,11 @@ export default function EmployeeDetailsPage() {
                     />
 
                     <DetailCard
-                      icon={<UserRound size={20} />}
+                      icon={
+                        <UserRound
+                          size={20}
+                        />
+                      }
                       label="Employee number"
                       value={
                         employee.employeeNumber
@@ -576,7 +716,7 @@ export default function EmployeeDetailsPage() {
 
       {pendingStatus &&
         employee &&
-        employee.user && (
+        canManageEmployee && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
             onMouseDown={
@@ -598,13 +738,18 @@ export default function EmployeeDetailsPage() {
                     pendingStatus,
                   )}`}
                 >
-                  {pendingStatus === "ACTIVE" ? (
-                    <CheckCircle2 size={22} />
+                  {pendingStatus ===
+                  "ACTIVE" ? (
+                    <CheckCircle2
+                      size={22}
+                    />
                   ) : pendingStatus ===
                     "SUSPENDED" ? (
                     <Ban size={22} />
                   ) : (
-                    <UserX size={22} />
+                    <UserX
+                      size={22}
+                    />
                   )}
                 </div>
 
@@ -619,8 +764,12 @@ export default function EmployeeDetailsPage() {
                   <p className="mt-2 text-sm leading-6 text-slate-600">
                     Change{" "}
                     <span className="font-semibold text-slate-900">
-                      {employee.firstName}{" "}
-                      {employee.lastName}
+                      {
+                        employee.firstName
+                      }{" "}
+                      {
+                        employee.lastName
+                      }
                     </span>
                     &apos;s status to{" "}
                     <span className="font-semibold text-slate-900">
@@ -636,7 +785,9 @@ export default function EmployeeDetailsPage() {
               <div className="mt-6 flex justify-end gap-3">
                 <button
                   type="button"
-                  disabled={isUpdatingStatus}
+                  disabled={
+                    isUpdatingStatus
+                  }
                   onClick={
                     closeStatusConfirmation
                   }
@@ -647,7 +798,9 @@ export default function EmployeeDetailsPage() {
 
                 <button
                   type="button"
-                  disabled={isUpdatingStatus}
+                  disabled={
+                    isUpdatingStatus
+                  }
                   onClick={() =>
                     void confirmStatusChange()
                   }
@@ -664,81 +817,88 @@ export default function EmployeeDetailsPage() {
           </div>
         )}
 
-      {isDeleteModalOpen && employee && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
-          onMouseDown={
-            closeDeleteConfirmation
-          }
-        >
+      {isDeleteModalOpen &&
+        employee &&
+        canDeleteEmployee && (
           <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-employee-title"
-            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
-            onMouseDown={(event) =>
-              event.stopPropagation()
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+            onMouseDown={
+              closeDeleteConfirmation
             }
           >
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700">
-                <Trash2 size={22} />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-employee-title"
+              className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+              onMouseDown={(event) =>
+                event.stopPropagation()
+              }
+            >
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700">
+                  <Trash2 size={22} />
+                </div>
+
+                <div>
+                  <h2
+                    id="delete-employee-title"
+                    className="text-xl font-bold text-slate-900"
+                  >
+                    Delete employee
+                  </h2>
+
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Are you sure you want
+                    to permanently delete{" "}
+                    <span className="font-semibold text-slate-900">
+                      {
+                        employee.firstName
+                      }{" "}
+                      {
+                        employee.lastName
+                      }
+                    </span>
+                    ?
+                  </p>
+
+                  <p className="mt-2 text-sm font-medium text-red-600">
+                    This action cannot be
+                    undone.
+                  </p>
+                </div>
               </div>
 
-              <div>
-                <h2
-                  id="delete-employee-title"
-                  className="text-xl font-bold text-slate-900"
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={
+                    closeDeleteConfirmation
+                  }
+                  className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Delete employee
-                </h2>
+                  Cancel
+                </button>
 
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Are you sure you want to
-                  permanently delete{" "}
-                  <span className="font-semibold text-slate-900">
-                    {employee.firstName}{" "}
-                    {employee.lastName}
-                  </span>
-                  ?
-                </p>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() =>
+                    void confirmDeleteEmployee()
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Trash2 size={17} />
 
-                <p className="mt-2 text-sm font-medium text-red-600">
-                  This action cannot be undone.
-                </p>
+                  {isDeleting
+                    ? "Deleting..."
+                    : "Delete Employee"}
+                </button>
               </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={
-                  closeDeleteConfirmation
-                }
-                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={() =>
-                  void confirmDeleteEmployee()
-                }
-                className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <Trash2 size={17} />
-
-                {isDeleting
-                  ? "Deleting..."
-                  : "Delete Employee"}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 }
