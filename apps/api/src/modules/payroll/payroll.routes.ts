@@ -5,25 +5,36 @@ import { authorizeRoles } from "../../middleware/authorizeRoles.js";
 import { validateRequest } from "../../middleware/validateRequest.js";
 
 import {
-  approvePayrollController,
-  createSalaryProfileController,
-  generatePayrollController,
-  getPayrollsController,
-  getSalaryProfilesController,
-  markPayrollPaidController,
-  updateSalaryProfileController,
+    approvePayrollController,
+    createSalaryProfileController,
+    generatePayrollController,
+    getMyPayrollsController,
+    getPayrollsController,
+    getSalaryProfilesController,
+    markPayrollPaidController,
+    updateSalaryProfileController,
 } from "./payroll.controller.js";
 
 import {
-  createSalaryProfileSchema,
-  generatePayrollSchema,
-  payrollIdSchema,
-  updateSalaryProfileSchema,
+    createSalaryProfileSchema,
+    generatePayrollSchema,
+    payrollIdSchema,
+    updateSalaryProfileSchema,
 } from "./payroll.schema.js";
 
 const payrollRouter = Router();
 
 payrollRouter.use(authenticate);
+
+/*
+ * Employee route.
+ * Keep this before parameter routes.
+ */
+payrollRouter.get(
+  "/me",
+  authorizeRoles("EMPLOYEE"),
+  getMyPayrollsController,
+);
 
 payrollRouter.get(
   "/salary-profiles",

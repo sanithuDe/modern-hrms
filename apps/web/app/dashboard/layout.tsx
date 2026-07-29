@@ -1,23 +1,50 @@
 "use client";
 
 import {
-  useEffect,
-  useState,
-  type ReactNode,
+    type ReactNode,
+    useEffect,
+    useState,
 } from "react";
 
 import { useRouter } from "next/navigation";
-
-import Header from "../../src/components/layout/header";
-import Sidebar from "../../src/components/layout/sidebar";
+import Shell from "../../src/components/layout/shell";
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
 interface StoredUser {
+  id?: string;
   email: string;
-  role: string;
+  role:
+    | "SUPER_ADMIN"
+    | "HR_MANAGER"
+    | "EMPLOYEE";
+}
+
+function isStoredUser(
+  value: unknown,
+): value is StoredUser {
+  if (
+    typeof value !== "object" ||
+    value === null
+  ) {
+    return false;
+  }
+
+  const user =
+    value as Partial<StoredUser>;
+
+  const validRole =
+    user.role === "SUPER_ADMIN" ||
+    user.role === "HR_MANAGER" ||
+    user.role === "EMPLOYEE";
+
+  return (
+    typeof user.email === "string" &&
+    user.email.trim().length > 0 &&
+    validRole
+  );
 }
 
 export default function DashboardLayout({
@@ -25,45 +52,39 @@ export default function DashboardLayout({
 }: DashboardLayoutProps) {
   const router = useRouter();
 
-  const [user, setUser] =
-    useState<StoredUser | null>(null);
-
   const [loading, setLoading] =
     useState(true);
 
   useEffect(() => {
-    const token =
+    const accessToken =
       window.localStorage.getItem(
         "accessToken",
       );
 
-    const storedUser =
+    const storedUserValue =
       window.localStorage.getItem(
         "authUser",
       );
 
-    if (!token || !storedUser) {
-      setLoading(false);
+    if (
+      !accessToken ||
+      !storedUserValue
+    ) {
       router.replace("/login");
       return;
     }
 
     try {
-      const parsedUser =
+      const parsedUser: unknown =
         JSON.parse(
-          storedUser,
-        ) as StoredUser;
+          storedUserValue,
+        );
 
-      if (
-        !parsedUser.email ||
-        !parsedUser.role
-      ) {
+      if (!isStoredUser(parsedUser)) {
         throw new Error(
           "Invalid stored user",
         );
       }
-
-      setUser(parsedUser);
     } catch {
       window.localStorage.removeItem(
         "accessToken",
@@ -73,7 +94,6 @@ export default function DashboardLayout({
         "authUser",
       );
 
-      setLoading(false);
       router.replace("/login");
       return;
     }
@@ -83,7 +103,7 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f3f6fa]">
+      <div className="flex min-h-screen items-center justify-center bg-slate-100">
         <p className="text-sm text-slate-600">
           Loading dashboard...
         </p>
@@ -91,24 +111,5 @@ export default function DashboardLayout({
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
-  return (
-    <div className="min-h-screen bg-[#f3f6fa]">
-      <Sidebar role={user.role} />
-
-      <div className="min-h-screen lg:pl-64">
-        <Header
-          email={user.email}
-          role={user.role}
-        />
-
-        <main className="min-h-[calc(100vh-80px)] px-7 py-7">
-          {children}
-        </main>
-      </div>
-    </div>
-  );
+  return <Shell>{children}</Shell>;
 }

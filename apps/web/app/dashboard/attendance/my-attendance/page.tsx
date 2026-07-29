@@ -6,7 +6,7 @@ import {
     type Attendance,
     type AttendanceFilters,
     getMyAttendance,
-} from "@/services/attendance.service";
+} from "../../../../src/services/attendance.service";
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString([], {
@@ -119,7 +119,7 @@ export default function MyAttendancePage() {
 
       const response = await getMyAttendance(filters);
 
-      setRecords(response.data);
+      setRecords(response.records);
       setPage(response.pagination.page);
       setTotalPages(
         Math.max(1, response.pagination.totalPages),

@@ -1,17 +1,22 @@
 import type {
-  NextFunction,
-  Request,
-  Response,
+    NextFunction,
+    Request,
+    Response,
 } from "express";
 
+import type {
+    AuthenticatedRequest,
+} from "../../middleware/authenticate.js";
+
 import {
-  approvePayroll,
-  createSalaryProfile,
-  generatePayroll,
-  getPayrolls,
-  getSalaryProfiles,
-  markPayrollPaid,
-  updateSalaryProfile,
+    approvePayroll,
+    createSalaryProfile,
+    generatePayroll,
+    getMyPayrolls,
+    getPayrolls,
+    getSalaryProfiles,
+    markPayrollPaid,
+    updateSalaryProfile,
 } from "./payroll.service.js";
 
 function getId(
@@ -27,6 +32,24 @@ function getId(
   }
 
   return id;
+}
+
+function getAuthenticatedUserId(
+  request: Request,
+): string {
+  const authenticatedRequest =
+    request as AuthenticatedRequest;
+
+  const userId =
+    authenticatedRequest.user?.id;
+
+  if (!userId) {
+    throw new Error(
+      "Authenticated user not found",
+    );
+  }
+
+  return userId;
 }
 
 export async function createSalaryProfileController(
@@ -134,6 +157,27 @@ export async function getPayrollsController(
   try {
     const payrolls =
       await getPayrolls();
+
+    response.status(200).json({
+      success: true,
+      data: payrolls,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getMyPayrollsController(
+  request: Request,
+  response: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const userId =
+      getAuthenticatedUserId(request);
+
+    const payrolls =
+      await getMyPayrolls(userId);
 
     response.status(200).json({
       success: true,

@@ -15,8 +15,7 @@ import {
     type FormEvent,
 } from "react";
 
-import Header from "../../../../../src/components/layout/header";
-import Sidebar from "../../../../../src/components/layout/sidebar";
+// Header and Sidebar are provided by the shared Shell layout
 
 import {
     getDepartments,
@@ -337,25 +336,14 @@ export default function EditEmployeePage() {
   if (!user) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-100">
-        <p className="text-slate-600">
-          Loading edit form...
-        </p>
+        <p className="text-slate-600">Loading edit form...</p>
       </main>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      <Sidebar role={user.role} />
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Header
-          email={user.email}
-          role={user.role}
-        />
-
-        <main className="flex-1 p-8">
-          <div className="mx-auto max-w-4xl">
+    <div className="p-8">
+      <div className="mx-auto max-w-4xl">
             <Link
               href={`/dashboard/employees/${params.id}`}
               className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
@@ -381,8 +369,8 @@ export default function EditEmployeePage() {
               </div>
             ) : (
               <form
-                onSubmit={handleSubmit}
-                className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+                onSubmit={(event) => void handleSubmit(event)}
+                className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
               >
                 {error && (
                   <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -609,8 +597,6 @@ export default function EditEmployeePage() {
                 </div>
               </form>
             )}
-          </div>
-        </main>
       </div>
     </div>
   );

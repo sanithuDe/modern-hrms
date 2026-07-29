@@ -1,140 +1,140 @@
-import "dotenv/config";
+import { prisma } from "../src/lib/prisma.js";
 
-import bcrypt from "bcryptjs";
-
-import {
-    PrismaClient,
-    UserRole,
-    UserStatus,
-} from "../src/generated/prisma/client.js";
-
-import { PrismaPg } from "@prisma/adapter-pg";
-
-const connectionString =
-  process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error(
-    "DATABASE_URL is not defined",
-  );
-}
-
-const adapter = new PrismaPg({
-  connectionString,
-});
-
-const prisma =
-  new PrismaClient({
-    adapter,
+async function seedShifts(): Promise<void> {
+  const dayShift = await prisma.shift.upsert({
+    where: {
+      code: "DAY",
+    },
+    update: {
+      name: "Day Shift",
+      startTimeMinutes: 510,
+      endTimeMinutes: 990,
+      crossesMidnight: false,
+      graceMinutes: 10,
+      requiredWorkMinutes: 480,
+      isActive: true,
+    },
+    create: {
+      name: "Day Shift",
+      code: "DAY",
+      startTimeMinutes: 510,
+      endTimeMinutes: 990,
+      crossesMidnight: false,
+      graceMinutes: 10,
+      requiredWorkMinutes: 480,
+      isActive: true,
+    },
   });
 
-async function main(): Promise<void> {
-  const email =
-    (
-      process.env
-        .SUPER_ADMIN_EMAIL ??
-      "admin@example.com"
-    )
-      .trim()
-      .toLowerCase();
+  const nightShift = await prisma.shift.upsert({
+    where: {
+      code: "NIGHT",
+    },
+    update: {
+      name: "Night Shift",
+      startTimeMinutes: 1080,
+      endTimeMinutes: 480,
+      crossesMidnight: true,
+      graceMinutes: 10,
+      requiredWorkMinutes: 840,
+      isActive: true,
+    },
+    create: {
+      name: "Night Shift",
+      code: "NIGHT",
+      startTimeMinutes: 1080,
+      endTimeMinutes: 480,
+      crossesMidnight: true,
+      graceMinutes: 10,
+      requiredWorkMinutes: 840,
+      isActive: true,
+    },
+  });
 
-  const password =
-    process.env
-      .SUPER_ADMIN_PASSWORD ??
-    "Admin123!";
-
-  const passwordHash =
-    await bcrypt.hash(
-      password,
-      12,
-    );
-
-  const user =
-    await prisma.user.upsert({
-      where: {
-        email,
-      },
-
-      update: {
-        passwordHash,
-        role:
-          UserRole.SUPER_ADMIN,
-        status:
-          UserStatus.ACTIVE,
-      },
-
-      create: {
-        email,
-        passwordHash,
-        role:
-          UserRole.SUPER_ADMIN,
-        status:
-          UserStatus.ACTIVE,
-      },
-    });
-
-  const existingEmployee =
-    await prisma.employee.findUnique({
-      where: {
-        userId: user.id,
-      },
-    });
-
-  if (!existingEmployee) {
-    const employeeNumber =
-      "ADMIN-001";
-
-    const employeeWithNumber =
-      await prisma.employee.findUnique({
-        where: {
-          employeeNumber,
-        },
-      });
-
-    if (employeeWithNumber) {
-      await prisma.employee.update({
-        where: {
-          id:
-            employeeWithNumber.id,
-        },
-
-        data: {
-          userId: user.id,
-          firstName: "System",
-          lastName: "Admin",
-          isActive: true,
-        },
-      });
-    } else {
-      await prisma.employee.create({
-        data: {
-          userId: user.id,
-          employeeNumber,
-          firstName: "System",
-          lastName: "Admin",
-          isActive: true,
-          hireDate: new Date(),
-        },
-      });
-    }
-  }
-
-  console.log(
-    "Super Admin created successfully",
-  );
+  console.log("Shifts created successfully:");
 
   console.log({
-    email,
-    password,
+    dayShift: {
+      id: dayShift.id,
+      code: dayShift.code,
+      name: dayShift.name,
+      schedule: "08:30 AM - 04:30 PM",
+    },
+    nightShift: {
+      id: nightShift.id,
+      code: nightShift.code,
+      name: nightShift.name,
+      schedule: "06:00 PM - 08:00 AM next day",
+    },
   });
+}
+
+async function seedAttendancePolicy(): Promise<void> {
+  const existingPolicy =
+    await prisma.attendancePolicy.findFirst({
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+  const policyData = {
+    monthlyShortLeaveCount: 2,
+    monthlyShortLeaveMinutes: 180,
+    fullDayMinimumWorkMinutes: 240,
+    halfDayMinimumWorkMinutes: 420,
+    allowWebCheckIn: true,
+    allowMobileCheckIn: true,
+  };
+
+  const attendancePolicy = existingPolicy
+    ? await prisma.attendancePolicy.update({
+        where: {
+          id: existingPolicy.id,
+        },
+        data: policyData,
+      })
+    : await prisma.attendancePolicy.create({
+        data: policyData,
+      });
+
+  console.log("Attendance policy created successfully:");
+
+  console.log({
+    id: attendancePolicy.id,
+    monthlyShortLeaveCount:
+      attendancePolicy.monthlyShortLeaveCount,
+    monthlyShortLeaveMinutes:
+      attendancePolicy.monthlyShortLeaveMinutes,
+    fullDayMinimumWorkMinutes:
+      attendancePolicy.fullDayMinimumWorkMinutes,
+    halfDayMinimumWorkMinutes:
+      attendancePolicy.halfDayMinimumWorkMinutes,
+    allowWebCheckIn:
+      attendancePolicy.allowWebCheckIn,
+    allowMobileCheckIn:
+      attendancePolicy.allowMobileCheckIn,
+  });
+}
+
+async function main(): Promise<void> {
+  console.log("Starting attendance seed...");
+
+  await seedShifts();
+  await seedAttendancePolicy();
+
+  console.log("Attendance seed completed successfully.");
 }
 
 main()
   .catch((error: unknown) => {
-    console.error(
-      "Seed failed:",
-      error,
-    );
+    console.error("Attendance seed failed:");
+
+    if (error instanceof Error) {
+      console.error(error.message);
+      console.error(error.stack);
+    } else {
+      console.error(error);
+    }
 
     process.exitCode = 1;
   })

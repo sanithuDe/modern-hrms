@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
@@ -124,6 +125,24 @@ export default function LoginPage() {
             {isLoading ? "Signing in..." : "Sign in"}
           </button>
         </form>
+
+        <p className="mt-6 text-center text-xs leading-6 text-slate-500">
+          By signing in, you agree to our{" "}
+          <Link
+            href="/terms-and-conditions"
+            className="font-medium text-slate-700 underline-offset-2 hover:underline"
+          >
+            Terms &amp; Conditions
+          </Link>{" "}
+          and{" "}
+          <Link
+            href="/privacy-policy"
+            className="font-medium text-slate-700 underline-offset-2 hover:underline"
+          >
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </div>
     </main>
   );

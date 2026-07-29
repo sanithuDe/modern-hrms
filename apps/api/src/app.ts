@@ -1,147 +1,223 @@
 import cors from "cors";
-import express from "express";
+
+import express, {
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
+
 import morgan from "morgan";
 
-import {
-    errorHandler,
-} from "./middleware/errorHandler.js";
+import announcementRouter from "./modules/announcements/announcement.routes.js";
+import attendancePolicyRouter from "./modules/attendance/attendance-policy/attendance-policy.routes.js";
+import attendanceRouter from "./modules/attendance/attendance.routes.js";
+import authRouter from "./modules/auth/auth.routes.js";
+import cvPortalRouter from "./modules/cv-portal/cv-portal.routes.js";
+import departmentRouter from "./modules/departments/department.routes.js";
+import employeeRouter from "./modules/employees/employee.routes.js";
+import leaveRouter from "./modules/leave/leave.routes.js";
+import payrollRouter from "./modules/payroll/payroll.routes.js";
+import performanceRouter from "./modules/performance/performance.routes.js";
+import positionRouter from "./modules/positions/position.routes.js";
+import recruitmentRouter from "./modules/recruitment/recruitment.routes.js";
+import shiftRouter from "./modules/shifts/shift.routes.js";
 
-import {
-    notFoundHandler,
-} from "./middleware/notFoundHandler.js";
+const app = express();
 
-import announcementRoutes from "./modules/announcements/announcement.routes.js";
-import attendanceRoutes from "./modules/attendance/attendance.routes.js";
-import authRoutes from "./modules/auth/auth.routes.js";
-import cvPortalRoutes from "./modules/cv-portal/cv-portal.routes.js";
-import departmentRoutes from "./modules/departments/department.routes.js";
-import employeeRoutes from "./modules/employees/employee.routes.js";
-import leaveRoutes from "./modules/leave/leave.routes.js";
-import payrollRoutes from "./modules/payroll/payroll.routes.js";
-import performanceRoutes from "./modules/performance/performance.routes.js";
-import positionRoutes from "./modules/positions/position.routes.js";
-import recruitmentRoutes from "./modules/recruitment/recruitment.routes.js";
-import settingsRoutes from "./modules/settings/settings.routes.js";
-
-const app =
-  express();
-
+/*
+ * Global middleware
+ */
 app.use(
   cors({
     origin: true,
-
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "PATCH",
-      "DELETE",
-      "OPTIONS",
-    ],
-
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-    ],
-
-    credentials: false,
+    credentials: true,
   }),
 );
 
 app.use(
-  express.json(),
+  express.json({
+    limit: "10mb",
+  }),
 );
 
 app.use(
   express.urlencoded({
     extended: true,
+    limit: "10mb",
   }),
 );
 
-app.use(
-  morgan("dev"),
-);
+app.use(morgan("dev"));
 
+/*
+ * Health check
+ */
 app.get(
   "/api/health",
   (
-    _request,
-    response,
-  ) => {
+    _request: Request,
+    response: Response,
+  ): void => {
     response.status(200).json({
       success: true,
-      message:
-        "HR Platform API is running",
+      message: "API is running",
     });
   },
 );
 
+/*
+ * Authentication
+ */
 app.use(
   "/api/auth",
-  authRoutes,
+  authRouter,
 );
 
-app.use(
-  "/api/departments",
-  departmentRoutes,
-);
-
-app.use(
-  "/api/positions",
-  positionRoutes,
-);
-
+/*
+ * Employees
+ */
 app.use(
   "/api/employees",
-  employeeRoutes,
+  employeeRouter,
 );
 
+/*
+ * Departments
+ */
+app.use(
+  "/api/departments",
+  departmentRouter,
+);
+
+/*
+ * Positions
+ */
+app.use(
+  "/api/positions",
+  positionRouter,
+);
+
+/*
+ * Leave
+ */
 app.use(
   "/api/leave",
-  leaveRoutes,
+  leaveRouter,
 );
 
+/*
+ * Payroll
+ */
 app.use(
   "/api/payroll",
-  payrollRoutes,
+  payrollRouter,
 );
 
+/*
+ * Attendance
+ */
 app.use(
   "/api/attendance",
-  attendanceRoutes,
+  attendanceRouter,
 );
 
+/*
+ * Attendance policy
+ */
 app.use(
-  "/api/performance",
-  performanceRoutes,
+  "/api/attendance-policy",
+  attendancePolicyRouter,
 );
 
+/*
+ * Shifts
+ */
+app.use(
+  "/api/shifts",
+  shiftRouter,
+);
+
+/*
+ * Announcements
+ */
 app.use(
   "/api/announcements",
-  announcementRoutes,
+  announcementRouter,
 );
 
+/*
+ * Performance
+ */
+app.use(
+  "/api/performance",
+  performanceRouter,
+);
+
+/*
+ * Recruitment
+ *
+ * GET    /api/recruitment/jobs
+ * POST   /api/recruitment/jobs
+ * GET    /api/recruitment/jobs/:id
+ * PATCH  /api/recruitment/jobs/:id
+ *
+ * GET    /api/recruitment/candidates
+ * POST   /api/recruitment/candidates
+ * GET    /api/recruitment/candidates/:id
+ * PATCH  /api/recruitment/candidates/:id
+ */
 app.use(
   "/api/recruitment",
-  recruitmentRoutes,
+  recruitmentRouter,
 );
 
-app.use(
-  "/api/settings",
-  settingsRoutes,
-);
-
+/*
+ * CV Portal
+ */
 app.use(
   "/api/cv-portal",
-  cvPortalRoutes,
+  cvPortalRouter,
 );
 
+/*
+ * 404 handler
+ *
+ * Keep this after every route.
+ */
 app.use(
-  notFoundHandler,
+  (
+    request: Request,
+    response: Response,
+  ): void => {
+    response.status(404).json({
+      success: false,
+      message: `Route not found: ${request.method} ${request.originalUrl}`,
+    });
+  },
 );
 
+/*
+ * Global error handler
+ */
 app.use(
-  errorHandler,
+  (
+    error: unknown,
+    _request: Request,
+    response: Response,
+    _next: NextFunction,
+  ): void => {
+    console.error(error);
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Internal server error";
+
+    response.status(500).json({
+      success: false,
+      message,
+    });
+  },
 );
 
 export default app;

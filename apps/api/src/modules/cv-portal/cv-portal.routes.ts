@@ -60,6 +60,8 @@ cvPortalRouter.get(
 cvPortalRouter.post(
   "/my",
   authorizeRoles(
+    "SUPER_ADMIN",
+    "HR_MANAGER",
     "EMPLOYEE",
   ),
   handleCvUpload,
@@ -72,6 +74,8 @@ cvPortalRouter.post(
 cvPortalRouter.get(
   "/my",
   authorizeRoles(
+    "SUPER_ADMIN",
+    "HR_MANAGER",
     "EMPLOYEE",
   ),
   getMyCvSubmissionsController,
@@ -80,6 +84,8 @@ cvPortalRouter.get(
 cvPortalRouter.get(
   "/my/:id",
   authorizeRoles(
+    "SUPER_ADMIN",
+    "HR_MANAGER",
     "EMPLOYEE",
   ),
   validateRequest(
@@ -91,6 +97,8 @@ cvPortalRouter.get(
 cvPortalRouter.delete(
   "/my/:id",
   authorizeRoles(
+    "SUPER_ADMIN",
+    "HR_MANAGER",
     "EMPLOYEE",
   ),
   validateRequest(

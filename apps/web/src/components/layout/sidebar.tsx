@@ -1,173 +1,188 @@
 "use client";
 
 import {
-  Bell,
-  BriefcaseBusiness,
-  Building2,
-  CalendarDays,
-  ChartNoAxesCombined,
-  FileSearch,
-  FileText,
-  LayoutDashboard,
-  LogOut,
-  Settings,
-  UserRound,
-  Users,
-  WalletCards,
+    BarChart3,
+    Bell,
+    CalendarCheck,
+    CalendarClock,
+    CircleDollarSign,
+    FileSearch,
+    LayoutDashboard,
+    LogOut,
+    UserRound,
+    Users,
 } from "lucide-react";
 
 import Link from "next/link";
 
 import {
-  usePathname,
-  useRouter,
+    usePathname,
+    useRouter,
 } from "next/navigation";
 
 interface SidebarProps {
   role: string;
 }
 
-interface SidebarLink {
+interface NavigationItem {
   label: string;
   href: string;
-  icon: React.ComponentType<{
-    size?: number;
-    strokeWidth?: number;
-    className?: string;
-  }>;
+  icon: typeof LayoutDashboard;
+  roles: string[];
 }
 
-const superAdminLinks: SidebarLink[] = [
+const navigationItems: NavigationItem[] = [
   {
     label: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
+    roles: [
+      "SUPER_ADMIN",
+      "HR_MANAGER",
+      "EMPLOYEE",
+    ],
   },
   {
     label: "Employees",
     href: "/dashboard/employees",
     icon: Users,
+    roles: [
+      "SUPER_ADMIN",
+      "HR_MANAGER",
+    ],
   },
   {
-    label: "Departments",
-    href: "/dashboard/departments",
-    icon: Building2,
-  },
-  {
-    label: "Positions",
-    href: "/dashboard/positions",
-    icon: BriefcaseBusiness,
+    label: "Shift Assignments",
+    href:
+      "/dashboard/shift-assignments",
+    icon: CalendarClock,
+    roles: [
+      "HR_MANAGER",
+    ],
   },
   {
     label: "Payroll",
     href: "/dashboard/payroll",
-    icon: WalletCards,
+    icon: CircleDollarSign,
+    roles: [
+      "SUPER_ADMIN",
+      "HR_MANAGER",
+    ],
+  },
+  {
+    label: "My Payroll",
+    href: "/dashboard/payroll",
+    icon: CircleDollarSign,
+    roles: [
+      "EMPLOYEE",
+    ],
   },
   {
     label: "Leave",
     href: "/dashboard/leave",
-    icon: CalendarDays,
+    icon: CalendarCheck,
+    roles: [
+      "SUPER_ADMIN",
+      "HR_MANAGER",
+      "EMPLOYEE",
+    ],
   },
   {
     label: "Attendance",
     href: "/dashboard/attendance",
     icon: UserRound,
+    roles: [
+      "SUPER_ADMIN",
+      "HR_MANAGER",
+      "EMPLOYEE",
+    ],
   },
   {
     label: "Performance",
     href: "/dashboard/performance",
-    icon: ChartNoAxesCombined,
+    icon: BarChart3,
+    roles: [
+      "SUPER_ADMIN",
+      "HR_MANAGER",
+      "EMPLOYEE",
+    ],
   },
   {
     label: "Announcements",
-    href: "/dashboard/announcements",
+    href:
+      "/dashboard/announcements",
     icon: Bell,
+    roles: [
+      "SUPER_ADMIN",
+      "HR_MANAGER",
+      "EMPLOYEE",
+    ],
   },
   {
     label: "Recruitment",
-    href: "/dashboard/recruitment",
-    icon: FileText,
+    href:
+      "/dashboard/recruitment",
+    icon: FileSearch,
+    roles: [
+      "SUPER_ADMIN",
+      "HR_MANAGER",
+    ],
   },
   {
     label: "CV Portal",
-    href: "/dashboard/cv",
+    href: "/dashboard/cv-portal",
     icon: FileSearch,
-  },
-  {
-    label: "Settings",
-    href: "/dashboard/settings",
-    icon: Settings,
+    roles: [
+      "SUPER_ADMIN",
+      "HR_MANAGER",
+      "EMPLOYEE",
+    ],
   },
 ];
 
-const hrManagerLinks: SidebarLink[] =
-  superAdminLinks.filter(
-    (item) =>
-      item.label !== "Settings" &&
-      item.label !== "Departments" &&
-      item.label !== "Positions",
-  );
-
-const employeeLinks: SidebarLink[] = [
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    label: "My Payroll",
-    href: "/dashboard/payroll",
-    icon: WalletCards,
-  },
-  {
-    label: "My Leave",
-    href: "/dashboard/leave",
-    icon: CalendarDays,
-  },
-  {
-    label: "My Attendance",
-    href: "/dashboard/attendance",
-    icon: UserRound,
-  },
-  {
-    label: "My Performance",
-    href: "/dashboard/performance",
-    icon: ChartNoAxesCombined,
-  },
-  {
-    label: "Announcements",
-    href: "/dashboard/announcements",
-    icon: Bell,
-  },
-  {
-    label: "CV Portal",
-    href: "/dashboard/cv",
-    icon: FileSearch,
-  },
-];
-
-function getLinksByRole(
+function normalizeRole(
   role: string,
-): SidebarLink[] {
-  if (role === "SUPER_ADMIN") {
-    return superAdminLinks;
+): string {
+  return role
+    .trim()
+    .toUpperCase();
+}
+
+function isActivePath(
+  pathname: string,
+  href: string,
+): boolean {
+  if (href === "/dashboard") {
+    return pathname === href;
   }
 
-  if (role === "HR_MANAGER") {
-    return hrManagerLinks;
-  }
-
-  return employeeLinks;
+  return (
+    pathname === href ||
+    pathname.startsWith(
+      `${href}/`,
+    )
+  );
 }
 
 export default function Sidebar({
   role,
 }: SidebarProps) {
-  const router = useRouter();
-  const pathname = usePathname();
+  const pathname =
+    usePathname();
 
-  const links =
-    getLinksByRole(role);
+  const router =
+    useRouter();
+
+  const normalizedRole =
+    normalizeRole(role);
+
+  const visibleItems =
+    navigationItems.filter(
+      (item) =>
+        item.roles.includes(
+          normalizedRole,
+        ),
+    );
 
   function handleLogout(): void {
     window.localStorage.removeItem(
@@ -179,40 +194,35 @@ export default function Sidebar({
     );
 
     router.replace("/login");
-  }
-
-  function isActive(
-    href: string,
-  ): boolean {
-    if (href === "/dashboard") {
-      return pathname === "/dashboard";
-    }
-
-    return pathname.startsWith(
-      `${href}/`,
-    ) || pathname === href;
+    router.refresh();
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-slate-950 text-white lg:flex">
-      <div className="border-b border-slate-800 px-6 py-6">
-        <h1 className="text-2xl font-bold">
-          HR Platform
-        </h1>
+    <aside className="sticky top-0 flex h-screen w-[220px] shrink-0 flex-col bg-[#030617] text-white">
+      <div className="border-b border-white/10 px-5 py-5">
+        <Link
+          href="/dashboard"
+          className="block"
+        >
+          <h1 className="text-xl font-bold">
+            HR Platform
+          </h1>
 
-        <p className="mt-1 text-xs text-slate-400">
-          Human Resource Management
-        </p>
+          <p className="mt-1 text-xs text-slate-400">
+            Human Resource Management
+          </p>
+        </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-5">
-        <div className="space-y-1">
-          {links.map((item) => {
+      <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
+        {visibleItems.map(
+          (item) => {
             const Icon =
               item.icon;
 
             const active =
-              isActive(
+              isActivePath(
+                pathname,
                 item.href,
               );
 
@@ -220,38 +230,47 @@ export default function Sidebar({
               <Link
                 key={item.href}
                 href={item.href}
-                className={
+                className={[
+                  "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition",
                   active
-                    ? "flex items-center gap-3 rounded-lg bg-slate-800 px-3 py-3 text-sm font-semibold text-white"
-                    : "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white"
-                }
+                    ? "bg-slate-700/70 text-white"
+                    : "text-slate-300 hover:bg-white/10 hover:text-white",
+                ].join(" ")}
               >
-                <Icon
-                  size={18}
-                  strokeWidth={1.8}
-                />
+                <Icon className="h-4 w-4 shrink-0" />
 
                 <span>
                   {item.label}
                 </span>
               </Link>
             );
-          })}
-        </div>
+          },
+        )}
       </nav>
 
-      <div className="border-t border-slate-800 p-3">
+      <div className="border-t border-white/10 p-3">
+        <div className="mb-2 space-y-1 px-3">
+          <Link
+            href="/privacy-policy"
+            className="block text-xs text-slate-400 transition hover:text-white"
+          >
+            Privacy Policy
+          </Link>
+
+          <Link
+            href="/terms-and-conditions"
+            className="block text-xs text-slate-400 transition hover:text-white"
+          >
+            Terms &amp; Conditions
+          </Link>
+        </div>
+
         <button
           type="button"
-          onClick={
-            handleLogout
-          }
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-red-300 transition hover:bg-red-950 hover:text-red-200"
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-red-300 transition hover:bg-red-500/10 hover:text-red-200"
         >
-          <LogOut
-            size={18}
-            strokeWidth={1.8}
-          />
+          <LogOut className="h-4 w-4 shrink-0" />
 
           <span>
             Logout

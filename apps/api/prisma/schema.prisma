@@ -23,7 +23,11 @@ enum AttendanceStatus {
   PRESENT
   ABSENT
   LATE
+  GRACE_LATE
+  SHORT_LEAVE
+  EARLY_DEPARTURE
   HALF_DAY
+  FULL_DAY_LEAVE
   ON_LEAVE
   HOLIDAY
 }
@@ -194,11 +198,12 @@ model Employee {
 
   isActive Boolean @default(true)
 
-  attendances   Attendance[]
-  leaveBalances LeaveBalance[]
-  leaveRequests LeaveRequest[]
-  salaryProfile SalaryProfile?
-  payrolls      Payroll[]
+  attendances      Attendance[]
+  shiftAssignments EmployeeShiftAssignment[]
+  leaveBalances    LeaveBalance[]
+  leaveRequests    LeaveRequest[]
+  salaryProfile    SalaryProfile?
+  payrolls         Payroll[]
 
   performanceReviews        PerformanceReview[] @relation("PerformanceReviewEmployee")
   performanceReviewsCreated PerformanceReview[] @relation("PerformanceReviewCreator")
@@ -221,7 +226,13 @@ model Attendance {
   employeeId String
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
+  shiftId String?
+  shift   Shift?  @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+
   date DateTime
+
+  scheduledStart DateTime?
+  scheduledEnd   DateTime?
 
   checkIn  DateTime?
   checkOut DateTime?
@@ -229,9 +240,13 @@ model Attendance {
   status AttendanceStatus @default(PRESENT)
   method AttendanceMethod @default(WEB)
 
-  workingMinutes  Int @default(0)
-  lateMinutes     Int @default(0)
-  overtimeMinutes Int @default(0)
+  workingMinutes    Int @default(0)
+  lateMinutes       Int @default(0)
+  overtimeMinutes   Int @default(0)
+  earlyLeaveMinutes Int @default(0)
+  shortLeaveMinutes Int @default(0)
+
+  leaveDayValue Decimal @default(0) @db.Decimal(4, 2)
 
   notes String?
 
@@ -243,6 +258,7 @@ model Attendance {
 
   @@unique([employeeId, date])
   @@index([employeeId])
+  @@index([shiftId])
   @@index([date])
   @@index([status])
   @@index([method])
@@ -609,4 +625,72 @@ model CvAnalysis {
   @@index([finalMatchScore])
   @@index([recommendation])
   @@index([analyzedAt])
+}
+
+model Shift {
+  id String @id @default(cuid())
+
+  name String
+  code String @unique
+
+  startTimeMinutes Int
+  endTimeMinutes   Int
+
+  crossesMidnight Boolean @default(false)
+
+  graceMinutes        Int @default(10)
+  requiredWorkMinutes Int @default(480)
+
+  isActive Boolean @default(true)
+
+  assignments EmployeeShiftAssignment[]
+  attendances Attendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([name])
+}
+
+model EmployeeShiftAssignment {
+  id String @id @default(cuid())
+
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  shiftId String
+  shift   Shift  @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  isActive Boolean @default(true)
+
+  assignedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([shiftId])
+  @@index([effectiveFrom])
+  @@index([effectiveTo])
+  @@index([isActive])
+}
+
+model AttendancePolicy {
+  id String @id @default(cuid())
+
+  monthlyShortLeaveCount   Int @default(2)
+  monthlyShortLeaveMinutes Int @default(180)
+
+  fullDayMinimumWorkMinutes Int @default(240)
+  halfDayMinimumWorkMinutes Int @default(420)
+
+  allowWebCheckIn    Boolean @default(true)
+  allowMobileCheckIn Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -27,8 +27,7 @@ import {
   type ReactNode,
 } from "react";
 
-import Header from "../../../../src/components/layout/header";
-import Sidebar from "../../../../src/components/layout/sidebar";
+// Header and Sidebar are provided by the shared Shell layout
 
 import {
   deleteEmployee,
@@ -409,25 +408,14 @@ export default function EmployeeDetailsPage() {
   if (!user) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-100">
-        <p className="text-slate-600">
-          Loading employee details...
-        </p>
+        <p className="text-slate-600">Loading employee details...</p>
       </main>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      <Sidebar role={user.role} />
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Header
-          email={user.email}
-          role={user.role}
-        />
-
-        <main className="flex-1 p-8">
-          <div className="mx-auto max-w-5xl">
+    <div className="p-8">
+      <div className="mx-auto max-w-5xl">
             <Link
               href="/dashboard/employees"
               className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
@@ -711,18 +699,12 @@ export default function EmployeeDetailsPage() {
                 </>
               )}
           </div>
-        </main>
-      </div>
 
-      {pendingStatus &&
-        employee &&
-        canManageEmployee && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
-            onMouseDown={
-              closeStatusConfirmation
-            }
-          >
+      {pendingStatus && employee && canManageEmployee && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+          onMouseDown={closeStatusConfirmation}
+        >
             <div
               role="dialog"
               aria-modal="true"

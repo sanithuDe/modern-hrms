@@ -4,7 +4,11 @@ export type AttendanceStatus =
   | "PRESENT"
   | "ABSENT"
   | "LATE"
+  | "GRACE_LATE"
+  | "SHORT_LEAVE"
+  | "EARLY_DEPARTURE"
   | "HALF_DAY"
+  | "FULL_DAY_LEAVE"
   | "ON_LEAVE"
   | "HOLIDAY";
 
@@ -13,6 +17,22 @@ export type AttendanceMethod =
   | "MOBILE"
   | "FINGERPRINT"
   | "MANUAL";
+
+export interface AttendanceShift {
+  id: string;
+  name: string;
+  code: string;
+
+  startTimeMinutes: number;
+  endTimeMinutes: number;
+
+  crossesMidnight: boolean;
+
+  graceMinutes: number;
+  requiredWorkMinutes: number;
+
+  isActive: boolean;
+}
 
 export interface AttendanceEmployee {
   id: string;
@@ -33,8 +53,17 @@ export interface AttendanceEmployee {
 
 export interface Attendance {
   id: string;
+
   employeeId: string;
+  employee?: AttendanceEmployee;
+
+  shiftId: string | null;
+  shift: AttendanceShift | null;
+
   date: string;
+
+  scheduledStart: string | null;
+  scheduledEnd: string | null;
 
   checkIn: string | null;
   checkOut: string | null;
@@ -45,42 +74,50 @@ export interface Attendance {
   workingMinutes: number;
   lateMinutes: number;
   overtimeMinutes: number;
+  earlyLeaveMinutes: number;
+  shortLeaveMinutes: number;
+
+  leaveDayValue: string | number;
 
   notes: string | null;
 
-  employee?: AttendanceEmployee;
+  createdById: string | null;
+  updatedById: string | null;
 
   createdAt: string;
   updatedAt: string;
 }
 
-export interface AttendanceFilters {
-  employeeId?: string;
-  status?: AttendanceStatus;
-  startDate?: string;
-  endDate?: string;
-  search?: string;
-  page?: number;
-  limit?: number;
+export interface AttendancePagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
-export interface PaginatedAttendanceResponse {
+export interface AttendanceList {
+  records: Attendance[];
+  pagination: AttendancePagination;
+}
+
+interface ApiResponse<T> {
   success: boolean;
-  data: Attendance[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
+  message?: string;
+  data: T;
 }
 
 export async function checkIn(
+  method: Exclude<
+    AttendanceMethod,
+    "MANUAL"
+  > = "WEB",
   notes?: string,
 ): Promise<Attendance> {
-  const response = await api.post("/attendance/check-in", {
-    method: "WEB",
-    notes,
+  const response = await api.post<
+    ApiResponse<Attendance>
+  >("/attendance/check-in", {
+    method,
+    ...(notes ? { notes } : {}),
   });
 
   return response.data.data;
@@ -89,8 +126,10 @@ export async function checkIn(
 export async function checkOut(
   notes?: string,
 ): Promise<Attendance> {
-  const response = await api.post("/attendance/check-out", {
-    notes,
+  const response = await api.post<
+    ApiResponse<Attendance>
+  >("/attendance/check-out", {
+    ...(notes ? { notes } : {}),
   });
 
   return response.data.data;
@@ -99,49 +138,74 @@ export async function checkOut(
 export async function getTodayAttendance(): Promise<
   Attendance | null
 > {
-  const response = await api.get("/attendance/my/today");
+  const response = await api.get<
+    ApiResponse<Attendance | null>
+  >("/attendance/my/today");
 
   return response.data.data;
 }
 
+export interface AttendanceFilters {
+  status?: AttendanceStatus;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
 export async function getMyAttendance(
-  filters: AttendanceFilters = {},
-): Promise<PaginatedAttendanceResponse> {
-  const response = await api.get("/attendance/my", {
-    params: filters,
+  params?: AttendanceFilters,
+): Promise<AttendanceList> {
+  const response = await api.get<
+    ApiResponse<AttendanceList>
+  >("/attendance/my", {
+    params,
   });
 
-  return response.data;
+  return response.data.data;
 }
 
 export async function getAllAttendance(
-  filters: AttendanceFilters = {},
-): Promise<PaginatedAttendanceResponse> {
-  const response = await api.get("/attendance", {
-    params: filters,
+  params?: {
+    employeeId?: string;
+    status?: AttendanceStatus;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  },
+): Promise<AttendanceList> {
+  const response = await api.get<
+    ApiResponse<AttendanceList>
+  >("/attendance", {
+    params,
   });
 
-  return response.data;
+  return response.data.data;
 }
 
-export async function createManualAttendance(input: {
-  employeeId: string;
-  date: string;
-  checkIn?: string | null;
-  checkOut?: string | null;
-  status: AttendanceStatus;
-  notes?: string | null;
-}): Promise<Attendance> {
-  const response = await api.post(
-    "/attendance/manual",
-    input,
-  );
+export async function createManualAttendance(
+  input: {
+    employeeId: string;
+    shiftId?: string | null;
+    date: string;
+    checkIn?: string | null;
+    checkOut?: string | null;
+    status: AttendanceStatus;
+    notes?: string | null;
+  },
+): Promise<Attendance> {
+  const response = await api.post<
+    ApiResponse<Attendance>
+  >("/attendance/manual", input);
 
   return response.data.data;
 }
 
 export async function updateAttendance(
-  id: string,
+  attendanceId: string,
   input: {
     checkIn?: string | null;
     checkOut?: string | null;
@@ -149,8 +213,10 @@ export async function updateAttendance(
     notes?: string | null;
   },
 ): Promise<Attendance> {
-  const response = await api.patch(
-    `/attendance/${id}`,
+  const response = await api.patch<
+    ApiResponse<Attendance>
+  >(
+    `/attendance/${attendanceId}`,
     input,
   );
 
@@ -158,7 +224,9 @@ export async function updateAttendance(
 }
 
 export async function deleteAttendance(
-  id: string,
+  attendanceId: string,
 ): Promise<void> {
-  await api.delete(`/attendance/${id}`);
+  await api.delete(
+    `/attendance/${attendanceId}`,
+  );
 }

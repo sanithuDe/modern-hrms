@@ -1,11 +1,11 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "../../generated/prisma/client.js";
 
 import { prisma } from "../../lib/prisma.js";
 
 import type {
-    CreateSalaryProfileInput,
-    GeneratePayrollInput,
-    UpdateSalaryProfileInput,
+  CreateSalaryProfileInput,
+  GeneratePayrollInput,
+  UpdateSalaryProfileInput,
 } from "./payroll.schema.js";
 
 const salaryProfileInclude = {
@@ -15,6 +15,20 @@ const salaryProfileInclude = {
       employeeNumber: true,
       firstName: true,
       lastName: true,
+
+      department: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+
+      position: {
+        select: {
+          id: true,
+          title: true,
+        },
+      },
     },
   },
 } satisfies Prisma.SalaryProfileInclude;
@@ -52,6 +66,7 @@ export async function createSalaryProfile(
       where: {
         id: input.employeeId,
       },
+
       select: {
         id: true,
       },
@@ -66,6 +81,7 @@ export async function createSalaryProfile(
       where: {
         employeeId: input.employeeId,
       },
+
       select: {
         id: true,
       },
@@ -100,6 +116,7 @@ export async function updateSalaryProfile(
       where: {
         employeeId,
       },
+
       select: {
         id: true,
       },
@@ -178,6 +195,7 @@ export async function generatePayroll(
           month: input.month,
         },
       },
+
       select: {
         id: true,
       },
@@ -189,8 +207,9 @@ export async function generatePayroll(
     );
   }
 
-  const basicSalary =
-    Number(salaryProfile.basicSalary);
+  const basicSalary = Number(
+    salaryProfile.basicSalary,
+  );
 
   const allowances =
     Number(
@@ -250,6 +269,47 @@ export async function getPayrolls() {
   });
 }
 
+export async function getMyPayrolls(
+  userId: string,
+) {
+  const employee =
+    await prisma.employee.findUnique({
+      where: {
+        userId,
+      },
+
+      select: {
+        id: true,
+      },
+    });
+
+  if (!employee) {
+    throw new Error(
+      "Employee profile not found for this user",
+    );
+  }
+
+  return prisma.payroll.findMany({
+    where: {
+      employeeId: employee.id,
+    },
+
+    include: payrollInclude,
+
+    orderBy: [
+      {
+        year: "desc",
+      },
+      {
+        month: "desc",
+      },
+      {
+        createdAt: "desc",
+      },
+    ],
+  });
+}
+
 export async function approvePayroll(
   id: string,
 ) {
@@ -258,6 +318,7 @@ export async function approvePayroll(
       where: {
         id,
       },
+
       select: {
         id: true,
         status: true,
@@ -296,6 +357,7 @@ export async function markPayrollPaid(
       where: {
         id,
       },
+
       select: {
         id: true,
         status: true,

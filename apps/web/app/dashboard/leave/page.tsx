@@ -22,7 +22,7 @@ import {
 } from "react";
 
 
-import Sidebar from "../../../src/components/layout/sidebar";
+// Sidebar is provided by the shared Shell layout
 
 import {
     getEmployees,
@@ -1152,20 +1152,15 @@ export default function LeavePage() {
   if (!user) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-100">
-        <p className="text-slate-600">
-          Loading leave module...
-        </p>
+        <p className="text-slate-600">Loading leave module...</p>
       </main>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      <Sidebar role={user.role} />
-
-      <div className="flex min-w-0 flex-1 flex-col">
-
-        <main className="flex-1 p-8">
+    <div className="p-8">
+      <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold text-slate-900">
             Leave Management
           </h1>
@@ -2430,7 +2425,7 @@ export default function LeavePage() {
                 </div>
               </section>
             )}
-        </main>
+        </div>
       </div>
 
       {editingType && (

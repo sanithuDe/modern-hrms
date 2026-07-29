@@ -1,28 +1,25 @@
 "use client";
 
-import { Search, UserPlus } from "lucide-react";
+import axios from "axios";
+import {
+    Search,
+    UserPlus,
+} from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
     useEffect,
     useMemo,
     useState,
 } from "react";
 
-import Header from "../../../src/components/layout/header";
-import Sidebar from "../../../src/components/layout/sidebar";
-
 import {
     getEmployees,
     type Employee,
 } from "../../../src/services/employee.service";
 
-interface StoredUser {
-  email: string;
-  role: string;
-}
-
-function formatRole(role: string): string {
+function formatRole(
+  role: string,
+): string {
   return role
     .toLowerCase()
     .split("_")
@@ -52,12 +49,30 @@ function getStatusClassName(
   }
 }
 
+function getErrorMessage(
+  error: unknown,
+): string {
+  if (axios.isAxiosError(error)) {
+    const message =
+      error.response?.data?.message;
+
+    if (
+      typeof message === "string"
+    ) {
+      return message;
+    }
+
+    return error.message;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Unable to load employees.";
+}
+
 export default function EmployeesPage() {
-  const router = useRouter();
-
-  const [user, setUser] =
-    useState<StoredUser | null>(null);
-
   const [employees, setEmployees] =
     useState<Employee[]>([]);
 
@@ -71,61 +86,35 @@ export default function EmployeesPage() {
     useState("");
 
   useEffect(() => {
-    const token =
-      localStorage.getItem("accessToken");
+    async function loadEmployees(): Promise<void> {
+      try {
+        setIsLoading(true);
+        setError("");
 
-    const storedUser =
-      localStorage.getItem("authUser");
+        const result =
+          await getEmployees();
 
-    if (!token || !storedUser) {
-      router.replace("/login");
-      return;
-    }
-
-    try {
-      const parsedUser =
-        JSON.parse(storedUser) as StoredUser;
-
-      if (
-        parsedUser.role !== "SUPER_ADMIN" &&
-        parsedUser.role !== "HR_MANAGER"
-      ) {
-        router.replace("/dashboard");
-        return;
+        setEmployees(result);
+      } catch (requestError) {
+        setError(
+          getErrorMessage(
+            requestError,
+          ),
+        );
+      } finally {
+        setIsLoading(false);
       }
-
-      setUser(parsedUser);
-
-      getEmployees()
-        .then((data) => {
-          setEmployees(data);
-        })
-        .catch((requestError: unknown) => {
-          console.error(requestError);
-          setError(
-            "Unable to load employees.",
-          );
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    } catch {
-      localStorage.removeItem(
-        "accessToken",
-      );
-
-      localStorage.removeItem(
-        "authUser",
-      );
-
-      router.replace("/login");
     }
-  }, [router]);
+
+    void loadEmployees();
+  }, []);
 
   const filteredEmployees =
     useMemo(() => {
       const keyword =
-        search.trim().toLowerCase();
+        search
+          .trim()
+          .toLowerCase();
 
       if (!keyword) {
         return employees;
@@ -133,222 +122,205 @@ export default function EmployeesPage() {
 
       return employees.filter(
         (employee) => {
-          const fullName =
-            `${employee.firstName} ${employee.lastName}`.toLowerCase();
+          const searchableValue = [
+            employee.firstName,
+            employee.lastName,
+            employee.employeeNumber,
+            employee.user?.email,
+            employee.user?.role,
+            employee.department?.name,
+            employee.position?.title,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
 
-          return (
-            fullName.includes(keyword) ||
-            employee.employeeNumber
-              .toLowerCase()
-              .includes(keyword) ||
-            employee.user.email
-              .toLowerCase()
-              .includes(keyword) ||
-            employee.department?.name
-              .toLowerCase()
-              .includes(keyword) ||
-            employee.position?.title
-              .toLowerCase()
-              .includes(keyword)
+          return searchableValue.includes(
+            keyword,
           );
         },
       );
-    }, [employees, search]);
-
-  if (!user) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-100">
-        <p className="text-slate-600">
-          Loading employees...
-        </p>
-      </main>
-    );
-  }
+    }, [
+      employees,
+      search,
+    ]);
 
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      <Sidebar role={user.role} />
+    <div className="p-6 lg:p-8">
+      <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-950">
+            Employees
+          </h1>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+          <p className="mt-2 text-sm text-slate-600">
+            View and manage employee
+            accounts.
+          </p>
+        </div>
 
-        <main className="flex-1 p-8">
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">
-                Employees
-              </h1>
+        <Link
+          href="/dashboard/employees/new"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          <UserPlus size={17} />
+          Add Employee
+        </Link>
+      </div>
 
-              <p className="mt-2 text-slate-600">
-                View and manage employee
-                accounts.
-              </p>
-            </div>
+      {error ? (
+        <div className="mb-6 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
 
-            <Link
-              href="/dashboard/employees/new"
-              className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white"
-            >
-              <UserPlus size={18} />
-              Add Employee
-            </Link>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full max-w-sm">
+            <Search
+              size={17}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+
+            <input
+              type="search"
+              value={search}
+              onChange={(event) =>
+                setSearch(
+                  event.target.value,
+                )
+              }
+              placeholder="Search employees"
+              className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-slate-900"
+            />
           </div>
 
-          <section className="mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex flex-col justify-between gap-4 border-b border-slate-200 p-5 md:flex-row md:items-center">
-              <div className="flex w-full max-w-md items-center gap-2 rounded-xl border border-slate-300 px-4 py-3">
-                <Search
-                  size={18}
-                  className="text-slate-400"
-                />
+          <p className="text-sm text-slate-600">
+            {filteredEmployees.length}{" "}
+            employee(s)
+          </p>
+        </div>
 
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(event) =>
-                    setSearch(
-                      event.target.value,
-                    )
-                  }
-                  placeholder="Search employees"
-                  className="w-full text-sm text-slate-900 outline-none placeholder:text-slate-400"
-                />
-              </div>
+        {isLoading ? (
+          <div className="p-10 text-center text-sm text-slate-600">
+            Loading employees...
+          </div>
+        ) : filteredEmployees.length ===
+          0 ? (
+          <div className="p-10 text-center text-sm text-slate-600">
+            No employees found.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="bg-slate-50">
+                <tr className="border-b border-slate-200">
+                  <th className="px-5 py-4 text-left text-xs font-semibold uppercase text-slate-500">
+                    Employee
+                  </th>
 
-              <p className="text-sm text-slate-500">
-                {filteredEmployees.length}{" "}
-                employee(s)
-              </p>
-            </div>
+                  <th className="px-5 py-4 text-left text-xs font-semibold uppercase text-slate-500">
+                    Number
+                  </th>
 
-            {isLoading ? (
-              <div className="p-8 text-center text-slate-500">
-                Loading employee records...
-              </div>
-            ) : error ? (
-              <div className="p-8 text-center text-red-600">
-                {error}
-              </div>
-            ) : filteredEmployees.length ===
-              0 ? (
-              <div className="p-8 text-center text-slate-500">
-                No employees found.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[950px] text-left">
-                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                    <tr>
-                      <th className="px-6 py-4">
-                        Employee
-                      </th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold uppercase text-slate-500">
+                    Department
+                  </th>
 
-                      <th className="px-6 py-4">
-                        Number
-                      </th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold uppercase text-slate-500">
+                    Position
+                  </th>
 
-                      <th className="px-6 py-4">
-                        Department
-                      </th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold uppercase text-slate-500">
+                    Role
+                  </th>
 
-                      <th className="px-6 py-4">
-                        Position
-                      </th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold uppercase text-slate-500">
+                    Status
+                  </th>
 
-                      <th className="px-6 py-4">
-                        Role
-                      </th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold uppercase text-slate-500">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
 
-                      <th className="px-6 py-4">
-                        Status
-                      </th>
+              <tbody>
+                {filteredEmployees.map(
+                  (employee) => (
+                    <tr
+                      key={employee.id}
+                      className="border-b border-slate-200 last:border-b-0"
+                    >
+                      <td className="px-5 py-4">
+                        <p className="font-medium text-slate-950">
+                          {employee.firstName}{" "}
+                          {employee.lastName}
+                        </p>
 
-                      <th className="px-6 py-4">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {employee.user
+                            ?.email ??
+                            "No email"}
+                        </p>
+                      </td>
 
-                  <tbody className="divide-y divide-slate-200">
-                    {filteredEmployees.map(
-                      (employee) => (
-                        <tr
-                          key={employee.id}
-                          className="text-sm text-slate-700"
+                      <td className="px-5 py-4 text-sm text-slate-700">
+                        {
+                          employee.employeeNumber
+                        }
+                      </td>
+
+                      <td className="px-5 py-4 text-sm text-slate-700">
+                        {employee.department
+                          ?.name ??
+                          "Not assigned"}
+                      </td>
+
+                      <td className="px-5 py-4 text-sm text-slate-700">
+                        {employee.position
+                          ?.title ??
+                          "Not assigned"}
+                      </td>
+
+                      <td className="px-5 py-4 text-sm text-slate-700">
+                        {formatRole(
+                          employee.user
+                            ?.role ??
+                            "EMPLOYEE",
+                        )}
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClassName(
+                            employee.user
+                              ?.status ??
+                              "ACTIVE",
+                          )}`}
                         >
-                          <td className="px-6 py-5">
-                            <p className="font-medium text-slate-900">
-                              {
-                                employee.firstName
-                              }{" "}
-                              {
-                                employee.lastName
-                              }
-                            </p>
+                          {employee.user
+                            ?.status ??
+                            "ACTIVE"}
+                        </span>
+                      </td>
 
-                            <p className="mt-1 text-xs text-slate-500">
-                              {
-                                employee.user
-                                  .email
-                              }
-                            </p>
-                          </td>
-
-                          <td className="px-6 py-5">
-                            {
-                              employee.employeeNumber
-                            }
-                          </td>
-
-                          <td className="px-6 py-5">
-                            {employee.department
-                              ?.name ??
-                              "Not assigned"}
-                          </td>
-
-                          <td className="px-6 py-5">
-                            {employee.position
-                              ?.title ??
-                              "Not assigned"}
-                          </td>
-
-                          <td className="px-6 py-5">
-                            {formatRole(
-                              employee.user.role,
-                            )}
-                          </td>
-
-                          <td className="px-6 py-5">
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClassName(
-                                employee.user
-                                  .status,
-                              )}`}
-                            >
-                              {
-                                employee.user
-                                  .status
-                              }
-                            </span>
-                          </td>
-
-                          <td className="px-6 py-5">
-                            <Link
-                              href={`/dashboard/employees/${employee.id}`}
-                              className="inline-flex rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                            >
-                              View
-                            </Link>
-                          </td>
-                        </tr>
-                      ),
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        </main>
-      </div>
+                      <td className="px-5 py-4">
+                        <Link
+                          href={`/dashboard/employees/${employee.id}`}
+                          className="inline-flex rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ),
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
