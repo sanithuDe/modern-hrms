@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import {
   useEffect,
   useState,
-  type ChangeEvent,
   type FormEvent,
 } from "react";
 
@@ -16,6 +15,8 @@ import {
   type UserRole,
 } from "../../../../src/services/employee.service";
 import { sanitizePhoneDigits } from "../../../../src/lib/phone";
+import { DateField } from "../../../../src/components/ui/DateTimeFields";
+import { SelectField } from "../../../../src/components/ui/SelectField";
 
 type CreatableUserRole = Exclude<
   UserRole,
@@ -160,12 +161,8 @@ export default function AddEmployeePage() {
     }));
   }
 
-  function handleRoleChange(
-    event: ChangeEvent<HTMLSelectElement>,
-  ): void {
-    const selectedRole =
-      event.target
-        .value as CreatableUserRole;
+  function handleRoleChange(value: string): void {
+    const selectedRole = value as CreatableUserRole;
 
     setForm((current) => ({
       ...current,
@@ -342,29 +339,30 @@ export default function AddEmployeePage() {
                   </div>
 
                   <div>
-                    <label
-                      htmlFor="role"
-                      className="mb-2 block text-sm font-medium text-slate-700"
-                    >
-                      Role
-                    </label>
-
                     {user.role === "SUPER_ADMIN" ? (
-                      <select
-                        id="role"
+                      <SelectField
+                        label="Role"
                         value={form.role}
                         onChange={handleRoleChange}
-                        className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-                      >
-                        <option value="EMPLOYEE">
-                          Employee
-                        </option>
-                        <option value="HR_MANAGER">
-                          HR Manager
-                        </option>
-                      </select>
+                        options={[
+                          {
+                            value: "EMPLOYEE",
+                            label: "Employee",
+                          },
+                          {
+                            value: "HR_MANAGER",
+                            label: "HR Manager",
+                          },
+                        ]}
+                      />
                     ) : (
                       <>
+                        <label
+                          htmlFor="role"
+                          className="mb-2 block text-sm font-medium text-slate-700"
+                        >
+                          Role
+                        </label>
                         <input
                           id="role"
                           type="text"
@@ -413,28 +411,14 @@ export default function AddEmployeePage() {
                     />
                   </div>
 
-                  <div>
-                    <label
-                      htmlFor="hireDate"
-                      className="mb-2 block text-sm font-medium text-slate-700"
-                    >
-                      Hire date
-                    </label>
-
-                    <input
-                      id="hireDate"
-                      type="date"
-                      required
-                      value={form.hireDate}
-                      onChange={(event) =>
-                        updateField(
-                          "hireDate",
-                          event.target.value,
-                        )
-                      }
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-                    />
-                  </div>
+                  <DateField
+                    label="Hire date"
+                    required
+                    value={form.hireDate}
+                    onChange={(value) =>
+                      updateField("hireDate", value)
+                    }
+                  />
 
                   <div>
                     <label

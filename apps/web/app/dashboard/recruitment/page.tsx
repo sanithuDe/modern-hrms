@@ -22,6 +22,8 @@ import {
   type FormEvent,
 } from "react";
 
+import { SelectField } from "../../../src/components/ui/SelectField";
+
 import {
   createCandidate,
   createJobOpening,
@@ -29,8 +31,6 @@ import {
   deleteJobOpening,
   getCandidates,
   getJobOpenings,
-  getRecruitmentDepartments,
-  getRecruitmentPositions,
   updateCandidate,
   updateCandidateStage,
   updateJobOpening,
@@ -42,10 +42,11 @@ import {
   type EmploymentType,
   type JobOpening,
   type JobOpeningStatus,
-  type RecruitmentDepartment,
-  type RecruitmentPosition,
 } from "../../../src/services/recruitment.service";
 import { sanitizePhoneDigits } from "../../../src/lib/phone";
+import {
+  DateTimeField,
+} from "../../../src/components/ui/DateTimeFields";
 
 interface StoredUser {
   email: string;
@@ -69,8 +70,8 @@ interface JobForm {
   salaryMax: string;
   location: string;
   applicationDeadline: string;
-  departmentId: string;
-  positionId: string;
+  departmentName: string;
+  positionTitle: string;
 }
 
 interface CandidateForm {
@@ -117,8 +118,8 @@ const initialJobForm: JobForm = {
   salaryMax: "",
   location: "",
   applicationDeadline: "",
-  departmentId: "",
-  positionId: "",
+  departmentName: "",
+  positionTitle: "",
 };
 
 const initialCandidateForm: CandidateForm = {
@@ -269,16 +270,16 @@ function jobStatusClass(
 ): string {
   switch (status) {
     case "OPEN":
-      return "bg-emerald-50 text-emerald-700";
+      return "border-transparent bg-emerald-50 text-emerald-700";
 
     case "CLOSED":
-      return "bg-blue-50 text-blue-700";
+      return "border-transparent bg-blue-50 text-blue-700";
 
     case "CANCELLED":
-      return "bg-red-50 text-red-700";
+      return "border-transparent bg-red-50 text-red-700";
 
     default:
-      return "bg-amber-50 text-amber-700";
+      return "border-transparent bg-amber-50 text-amber-700";
   }
 }
 
@@ -287,21 +288,21 @@ function candidateStageClass(
 ): string {
   switch (stage) {
     case "HIRED":
-      return "bg-emerald-50 text-emerald-700";
+      return "border-transparent bg-emerald-50 text-emerald-700";
 
     case "REJECTED":
     case "WITHDRAWN":
-      return "bg-red-50 text-red-700";
+      return "border-transparent bg-red-50 text-red-700";
 
     case "INTERVIEW":
     case "OFFERED":
-      return "bg-blue-50 text-blue-700";
+      return "border-transparent bg-blue-50 text-blue-700";
 
     case "SCREENING":
-      return "bg-violet-50 text-violet-700";
+      return "border-transparent bg-violet-50 text-violet-700";
 
     default:
-      return "bg-amber-50 text-amber-700";
+      return "border-transparent bg-amber-50 text-amber-700";
   }
 }
 
@@ -317,12 +318,6 @@ export default function RecruitmentPage() {
 
   const [candidates, setCandidates] =
     useState<Candidate[]>([]);
-
-  const [departments, setDepartments] =
-    useState<RecruitmentDepartment[]>([]);
-
-  const [positions, setPositions] =
-    useState<RecruitmentPosition[]>([]);
 
   const [jobForm, setJobForm] =
     useState<JobForm>(initialJobForm);
@@ -389,8 +384,6 @@ export default function RecruitmentPage() {
         await Promise.allSettled([
           getJobOpenings(),
           getCandidates(),
-          getRecruitmentDepartments(),
-          getRecruitmentPositions(),
         ]);
 
       if (
@@ -413,28 +406,6 @@ export default function RecruitmentPage() {
         );
       } else {
         setCandidates([]);
-      }
-
-      if (
-        results[2].status ===
-        "fulfilled"
-      ) {
-        setDepartments(
-          results[2].value,
-        );
-      } else {
-        setDepartments([]);
-      }
-
-      if (
-        results[3].status ===
-        "fulfilled"
-      ) {
-        setPositions(
-          results[3].value,
-        );
-      } else {
-        setPositions([]);
       }
 
       const failedResult =
@@ -593,23 +564,6 @@ export default function RecruitmentPage() {
       );
     }, [candidates, search]);
 
-  const filteredPositions =
-    useMemo(() => {
-      if (!jobForm.departmentId) {
-        return positions;
-      }
-
-      return positions.filter(
-        (position) =>
-          !position.departmentId ||
-          position.departmentId ===
-            jobForm.departmentId,
-      );
-    }, [
-      jobForm.departmentId,
-      positions,
-    ]);
-
   function openCreateJobForm(): void {
     setEditingJob(null);
     setJobForm(initialJobForm);
@@ -656,10 +610,10 @@ export default function RecruitmentPage() {
         toDateTimeLocal(
           job.applicationDeadline,
         ),
-      departmentId:
-        job.departmentId ?? "",
-      positionId:
-        job.positionId ?? "",
+      departmentName:
+        job.department?.name ?? "",
+      positionTitle:
+        job.position?.title ?? "",
     });
 
     setError("");
@@ -821,12 +775,12 @@ export default function RecruitmentPage() {
               ).toISOString()
             : null,
 
-        departmentId:
-          jobForm.departmentId ||
+        departmentName:
+          jobForm.departmentName.trim() ||
           null,
 
-        positionId:
-          jobForm.positionId ||
+        positionTitle:
+          jobForm.positionTitle.trim() ||
           null,
       };
 
@@ -1343,34 +1297,34 @@ export default function RecruitmentPage() {
                     </div>
 
                     <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
-                      <select
+                      <SelectField
                         value={job.status}
+                        required
+                        searchable={false}
                         disabled={
                           actionId ===
                           job.id
                         }
-                        onChange={(event) =>
+                        onChange={(value) =>
                           void handleJobStatus(
                             job.id,
-                            event.target
-                              .value as JobOpeningStatus,
+                            value as JobOpeningStatus,
                           )
                         }
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                      >
-                        {jobStatuses.map(
-                          (status) => (
-                            <option
-                              key={status}
-                              value={status}
-                            >
-                              {formatLabel(
-                                status,
-                              )}
-                            </option>
-                          ),
+                        className="w-[148px]"
+                        triggerClassName={jobStatusClass(
+                          job.status,
                         )}
-                      </select>
+                        options={jobStatuses.map(
+                          (status) => ({
+                            value: status,
+                            label:
+                              formatLabel(
+                                status,
+                              ),
+                          }),
+                        )}
+                      />
 
                       <button
                         type="button"
@@ -1473,46 +1427,39 @@ export default function RecruitmentPage() {
                           years
                         </td>
 
-                        <td className="px-5 py-4">
-                          <select
+                        <td className="px-5 py-4 align-middle">
+                          <SelectField
                             value={
                               candidate.stage
                             }
+                            required
+                            searchable={false}
                             disabled={
                               actionId ===
                               candidate.id
                             }
                             onChange={(
-                              event,
+                              value,
                             ) =>
                               void handleCandidateStage(
                                 candidate.id,
-                                event
-                                  .target
-                                  .value as CandidateStage,
+                                value as CandidateStage,
                               )
                             }
-                            className={`rounded-lg px-3 py-2 text-sm font-semibold ${candidateStageClass(
+                            className="w-[148px] max-w-[148px]"
+                            triggerClassName={candidateStageClass(
                               candidate.stage,
-                            )}`}
-                          >
-                            {candidateStages.map(
-                              (stage) => (
-                                <option
-                                  key={
-                                    stage
-                                  }
-                                  value={
-                                    stage
-                                  }
-                                >
-                                  {formatLabel(
-                                    stage,
-                                  )}
-                                </option>
-                              ),
                             )}
-                          </select>
+                            options={candidateStages.map(
+                              (stage) => ({
+                                value: stage,
+                                label:
+                                  formatLabel(
+                                    stage,
+                                  ),
+                              }),
+                            )}
+                          />
                         </td>
 
                         <td className="px-5 py-4 text-sm text-slate-600">
@@ -1654,51 +1601,34 @@ export default function RecruitmentPage() {
                 }
               />
 
-              <FormSelect
+              <FormInput
                 label="Department"
                 value={
-                  jobForm.departmentId
+                  jobForm.departmentName
                 }
-                options={departments.map(
-                  (department) => ({
-                    value:
-                      department.id,
-                    label:
-                      department.name,
-                  }),
-                )}
-                emptyLabel="No department"
+                placeholder="Type department name"
                 onChange={(value) =>
                   setJobForm(
                     (current) => ({
                       ...current,
-                      departmentId:
+                      departmentName:
                         value,
-                      positionId: "",
                     }),
                   )
                 }
               />
 
-              <FormSelect
+              <FormInput
                 label="Position"
                 value={
-                  jobForm.positionId
+                  jobForm.positionTitle
                 }
-                options={filteredPositions.map(
-                  (position) => ({
-                    value:
-                      position.id,
-                    label:
-                      position.title,
-                  }),
-                )}
-                emptyLabel="No position"
+                placeholder="Type position title"
                 onChange={(value) =>
                   setJobForm(
                     (current) => ({
                       ...current,
-                      positionId:
+                      positionTitle:
                         value,
                     }),
                   )
@@ -1721,9 +1651,8 @@ export default function RecruitmentPage() {
                 }
               />
 
-              <FormInput
+              <DateTimeField
                 label="Deadline"
-                type="datetime-local"
                 value={
                   jobForm.applicationDeadline
                 }
@@ -1733,6 +1662,14 @@ export default function RecruitmentPage() {
                       ...current,
                       applicationDeadline:
                         value,
+                    }),
+                  )
+                }
+                onClear={() =>
+                  setJobForm(
+                    (current) => ({
+                      ...current,
+                      applicationDeadline: "",
                     }),
                   )
                 }
@@ -2021,9 +1958,8 @@ export default function RecruitmentPage() {
                 }
               />
 
-              <FormInput
+              <DateTimeField
                 label="Applied date"
-                type="datetime-local"
                 value={
                   candidateForm.appliedAt
                 }
@@ -2033,6 +1969,14 @@ export default function RecruitmentPage() {
                       ...current,
                       appliedAt:
                         value,
+                    }),
+                  )
+                }
+                onClear={() =>
+                  setCandidateForm(
+                    (current) => ({
+                      ...current,
+                      appliedAt: "",
                     }),
                   )
                 }
@@ -2357,12 +2301,14 @@ function FormInput({
   onChange,
   type = "text",
   required = false,
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
   required?: boolean;
+  placeholder?: string;
 }) {
   return (
     <div>
@@ -2374,6 +2320,7 @@ function FormInput({
         type={type}
         value={value}
         required={required}
+        placeholder={placeholder}
         inputMode={
           type === "tel" ? "numeric" : undefined
         }
@@ -2456,54 +2403,25 @@ function FormSelect({
   emptyLabel?: string;
   required?: boolean;
 }) {
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
-        {label}
-      </label>
-
-      <select
-        value={value}
-        required={required}
-        onChange={(event) =>
-          onChange(
-            event.target.value,
-          )
-        }
-        className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-      >
-        {emptyLabel ? (
-          <option value="">
-            {emptyLabel}
-          </option>
-        ) : null}
-
-        {options.map((option) => {
-          if (
-            typeof option ===
-            "string"
-          ) {
-            return (
-              <option
-                key={option}
-                value={option}
-              >
-                {formatLabel(option)}
-              </option>
-            );
+  const normalizedOptions = options.map(
+    (option) =>
+      typeof option === "string"
+        ? {
+            value: option,
+            label: formatLabel(option),
           }
+        : option,
+  );
 
-          return (
-            <option
-              key={option.value}
-              value={option.value}
-            >
-              {option.label}
-            </option>
-          );
-        })}
-      </select>
-    </div>
+  return (
+    <SelectField
+      label={label}
+      value={value}
+      required={required || !emptyLabel}
+      placeholder={emptyLabel}
+      options={normalizedOptions}
+      onChange={onChange}
+    />
   );
 }
 

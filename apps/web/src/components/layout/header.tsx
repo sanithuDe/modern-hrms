@@ -111,6 +111,13 @@ function resolveSearchHref(
     return "/dashboard/cv-portal";
   }
 
+  if (
+    item.label === "Attendance" &&
+    normalizeRole(role) !== "EMPLOYEE"
+  ) {
+    return "/dashboard/attendance/manage";
+  }
+
   return item.href;
 }
 
@@ -120,8 +127,8 @@ function getPageInformation(
 ): PageInformation {
   if (pathname === "/dashboard") {
     return {
-      title: "Dashboard",
-      subtitle: "Welcome back to your HR workspace",
+      title: "Overview",
+      subtitle: "People, attendance, payroll and leave at a glance",
     };
   }
 
@@ -194,10 +201,20 @@ function getPageInformation(
     };
   }
 
+  if (pathname.startsWith("/dashboard/attendance/manage")) {
+    return {
+      title: "Attendance",
+      subtitle: "View and filter employee attendance history",
+    };
+  }
+
   if (pathname.startsWith("/dashboard/attendance")) {
     return {
       title: "Attendance",
-      subtitle: "Track check-in, check-out, and working time",
+      subtitle:
+        role && normalizeRole(role) !== "EMPLOYEE"
+          ? "View and filter employee attendance history"
+          : "Track your check-in, check-out, and working time",
     };
   }
 
@@ -240,8 +257,8 @@ function getPageInformation(
   }
 
   return {
-    title: "Dashboard",
-    subtitle: "Welcome back to your HR workspace",
+    title: "Overview",
+    subtitle: "People, attendance, payroll and leave at a glance",
   };
 }
 
@@ -358,24 +375,24 @@ export default function Header({
 
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-white/80 px-5 backdrop-blur-xl sm:px-8 lg:px-10">
-      <div className="mx-auto flex h-[4.5rem] max-w-[1400px] items-center justify-between gap-4">
-        <div className="min-w-0">
+      <div className="flex w-full items-center justify-between gap-4 py-4">
+        <div className="min-w-0 shrink">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--brand-mid)]">
             Workspace
           </p>
-          <h2 className="truncate font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight text-[var(--ink)] sm:text-2xl">
+          <h2 className="mt-0.5 truncate font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight text-[var(--ink)] sm:text-2xl">
             {pageInformation.title}
           </h2>
-          <p className="hidden truncate text-sm text-[var(--ink-muted)] sm:block">
+          <p className="mt-0.5 hidden max-w-md truncate text-sm text-[var(--ink-muted)] sm:block">
             {pageInformation.subtitle}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
           <div ref={searchRef} className="relative hidden md:block">
             <form
               onSubmit={handleSearchSubmit}
-              className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--canvas)] px-3.5 py-2"
+              className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--canvas)] px-3.5 py-2.5"
             >
               <Search size={16} className="shrink-0 text-[var(--ink-faint)]" />
               <input
@@ -388,7 +405,7 @@ export default function Header({
                 onFocus={() => setOpen(true)}
                 onKeyDown={handleSearchKeyDown}
                 placeholder="Search pages (leave, payroll…)"
-                className="w-52 bg-transparent text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-faint)]"
+                className="w-44 bg-transparent text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-faint)] lg:w-56"
                 aria-label="Search workspace pages"
                 aria-expanded={open}
                 aria-controls="workspace-search-results"

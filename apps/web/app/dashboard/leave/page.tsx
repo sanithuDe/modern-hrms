@@ -28,6 +28,11 @@ import {
 } from "../../../src/services/employee.service";
 
 import {
+    DateField,
+} from "../../../src/components/ui/DateTimeFields";
+import { SelectField } from "../../../src/components/ui/SelectField";
+
+import {
     cancelLeaveRequest,
     createLeaveBalance,
     createLeaveRequest,
@@ -562,6 +567,26 @@ export default function LeavePage() {
           leaveType.isActive,
       );
     }, [leaveTypes]);
+
+  const leaveTypeOptions = useMemo(() => {
+    return activeLeaveTypes.map((leaveType) => {
+      const balance = balances.find(
+        (item) => item.leaveTypeId === leaveType.id,
+      );
+      const remaining = balance
+        ? toNumber(balance.allocatedDays) - toNumber(balance.usedDays)
+        : null;
+
+      return {
+        value: leaveType.id,
+        label: leaveType.name,
+        description:
+          remaining === null
+            ? leaveType.description || undefined
+            : `${remaining} day${remaining === 1 ? "" : "s"} remaining`,
+      };
+    });
+  }, [activeLeaveTypes, balances]);
 
   const availableEmployees =
     useMemo(() => {
@@ -1358,9 +1383,9 @@ export default function LeavePage() {
             !isManager && (
               <section className="mt-8 max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <CalendarDays
-                    size={24}
-                  />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--brand-soft)] text-[var(--brand)]">
+                    <CalendarDays size={22} />
+                  </div>
 
                   <div>
                     <h2 className="text-xl font-semibold text-slate-900">
@@ -1378,103 +1403,59 @@ export default function LeavePage() {
                   onSubmit={
                     handleSubmitRequest
                   }
-                  className="mt-6"
+                  className="mt-6 space-y-5"
                 >
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Leave type
-                  </label>
-
-                  <select
+                  <SelectField
+                    label="Leave type"
                     required
                     value={leaveTypeId}
-                    onChange={(event) =>
-                      setLeaveTypeId(
-                        event.target.value,
-                      )
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black"
-                  >
-                    <option value="">
-                      Select leave type
-                    </option>
+                    placeholder="Select leave type"
+                    emptyMessage="No active leave types yet"
+                    options={leaveTypeOptions}
+                    onChange={setLeaveTypeId}
+                  />
 
-                    {activeLeaveTypes.map(
-                      (leaveType) => (
-                        <option
-                          key={
-                            leaveType.id
-                          }
-                          value={
-                            leaveType.id
-                          }
-                        >
-                          {leaveType.name}
-                        </option>
-                      ),
-                    )}
-                  </select>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <DateField
+                      label="Start date"
+                      required
+                      value={startDate}
+                      onChange={setStartDate}
+                    />
 
-                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-slate-700">
-                        Start date
-                      </label>
-
-                      <input
-                        type="date"
-                        required
-                        value={startDate}
-                        onChange={(event) =>
-                          setStartDate(
-                            event.target
-                              .value,
-                          )
-                        }
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-slate-700">
-                        End date
-                      </label>
-
-                      <input
-                        type="date"
-                        required
-                        min={startDate}
-                        value={endDate}
-                        onChange={(event) =>
-                          setEndDate(
-                            event.target
-                              .value,
-                          )
-                        }
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black"
-                      />
-                    </div>
+                    <DateField
+                      label="End date"
+                      required
+                      value={endDate}
+                      minDate={startDate || undefined}
+                      onChange={setEndDate}
+                    />
                   </div>
 
-                  <label className="mb-2 mt-5 block text-sm font-medium text-slate-700">
-                    Reason
-                  </label>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Reason
+                      <span className="text-red-500"> *</span>
+                    </label>
 
-                  <textarea
-                    required
-                    rows={4}
-                    value={reason}
-                    onChange={(event) =>
-                      setReason(
-                        event.target.value,
-                      )
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black"
-                  />
+                    <textarea
+                      required
+                      rows={4}
+                      value={reason}
+                      placeholder="Briefly explain why you need leave..."
+                      onChange={(event) =>
+                        setReason(
+                          event.target.value,
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/15"
+                    />
+                  </div>
 
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="mt-6 flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-dark)] disabled:opacity-60"
                   >
                     <Plus size={18} />
 
@@ -1825,38 +1806,28 @@ export default function LeavePage() {
                       }
                       className="mt-6"
                     >
-                      <label className="mb-2 block text-sm font-medium text-slate-700">
-                        Leave type
-                      </label>
-
-                      <select
+                      <SelectField
+                        label="Leave type"
                         required
-                        value={
-                          balanceLeaveTypeId
-                        }
-                        onChange={(event) => {
-                          setBalanceLeaveTypeId(
-                            event.target
-                              .value,
-                          );
-
-                          setBalanceEmployeeId(
-                            "",
-                          );
+                        value={balanceLeaveTypeId}
+                        placeholder="Select leave type"
+                        options={activeLeaveTypes.map(
+                          (leaveType) => ({
+                            value: leaveType.id,
+                            label: leaveType.name,
+                          }),
+                        )}
+                        onChange={(value) => {
+                          setBalanceLeaveTypeId(value);
+                          setBalanceEmployeeId("");
 
                           const selectedType =
                             leaveTypes.find(
-                              (
-                                leaveType,
-                              ) =>
-                                leaveType.id ===
-                                event.target
-                                  .value,
+                              (leaveType) =>
+                                leaveType.id === value,
                             );
 
-                          if (
-                            selectedType
-                          ) {
+                          if (selectedType) {
                             setBalanceAllocatedDays(
                               String(
                                 selectedType.defaultDays,
@@ -1864,29 +1835,7 @@ export default function LeavePage() {
                             );
                           }
                         }}
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black"
-                      >
-                        <option value="">
-                          Select leave type
-                        </option>
-
-                        {activeLeaveTypes.map(
-                          (leaveType) => (
-                            <option
-                              key={
-                                leaveType.id
-                              }
-                              value={
-                                leaveType.id
-                              }
-                            >
-                              {
-                                leaveType.name
-                              }
-                            </option>
-                          ),
-                        )}
-                      </select>
+                      />
 
                       <label className="mb-2 mt-5 block text-sm font-medium text-slate-700">
                         Year
@@ -1911,49 +1860,20 @@ export default function LeavePage() {
                         className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black"
                       />
 
-                      <label className="mb-2 mt-5 block text-sm font-medium text-slate-700">
-                        Employee
-                      </label>
-
-                      <select
+                      <SelectField
+                        className="mt-5"
+                        label="Employee"
                         required
-                        value={
-                          balanceEmployeeId
-                        }
-                        onChange={(event) =>
-                          setBalanceEmployeeId(
-                            event.target
-                              .value,
-                          )
-                        }
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black"
-                      >
-                        <option value="">
-                          Select employee
-                        </option>
-
-                        {availableEmployees.map(
-                          (employee) => (
-                            <option
-                              key={
-                                employee.id
-                              }
-                              value={
-                                employee.id
-                              }
-                            >
-                              {getEmployeeName(
-                                employee,
-                              )}{" "}
-                              (
-                              {
-                                employee.employeeNumber
-                              }
-                              )
-                            </option>
-                          ),
+                        value={balanceEmployeeId}
+                        placeholder="Select employee"
+                        options={availableEmployees.map(
+                          (employee) => ({
+                            value: employee.id,
+                            label: `${getEmployeeName(employee)} (${employee.employeeNumber})`,
+                          }),
                         )}
-                      </select>
+                        onChange={setBalanceEmployeeId}
+                      />
 
                       <label className="mb-2 mt-5 block text-sm font-medium text-slate-700">
                         Allocated days

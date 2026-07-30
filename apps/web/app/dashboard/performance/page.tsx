@@ -21,6 +21,9 @@ import {
     getEmployees,
 } from "../../../src/services/employee.service";
 
+import { DateField } from "../../../src/components/ui/DateTimeFields";
+import { SelectField } from "../../../src/components/ui/SelectField";
+
 import {
     completePerformanceReview,
     createPerformanceReview,
@@ -186,31 +189,18 @@ function ScoreRatingSelect({
   onChange: (value: number) => void;
 }) {
   return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
-        {label}
-      </label>
-
-      <select
-        value={nearestRatingScore(value)}
-        onChange={(event) =>
-          onChange(Number(event.target.value))
-        }
-        required
-        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-      >
-        {PERFORMANCE_RATING_OPTIONS.map(
-          (option) => (
-            <option
-              key={option.label}
-              value={option.value}
-            >
-              {option.label}
-            </option>
-          ),
-        )}
-      </select>
-    </div>
+    <SelectField
+      label={label}
+      required
+      value={String(nearestRatingScore(value))}
+      options={PERFORMANCE_RATING_OPTIONS.map(
+        (option) => ({
+          value: String(option.value),
+          label: option.label,
+        }),
+      )}
+      onChange={(next) => onChange(Number(next))}
+    />
   );
 }
 
@@ -1017,53 +1007,21 @@ export default function PerformancePage() {
               className="space-y-6 p-6"
             >
               <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Employee
-                  </label>
-
-                  <select
-                    value={
-                      form.employeeId
-                    }
-                    onChange={(event) =>
-                      updateForm(
-                        "employeeId",
-                        event.target.value,
-                      )
-                    }
-                    required
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-                  >
-                    <option value="">
-                      Select employee
-                    </option>
-
-                    {employees.map(
-                      (employee) => (
-                        <option
-                          key={
-                            employee.id
-                          }
-                          value={
-                            employee.id
-                          }
-                        >
-                          {
-                            employee.employeeNumber
-                          }{" "}
-                          -{" "}
-                          {
-                            employee.firstName
-                          }{" "}
-                          {
-                            employee.lastName
-                          }
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </div>
+                <SelectField
+                  label="Employee"
+                  required
+                  value={form.employeeId}
+                  placeholder="Select employee"
+                  options={employees.map(
+                    (employee) => ({
+                      value: employee.id,
+                      label: `${employee.employeeNumber} - ${employee.firstName} ${employee.lastName}`,
+                    }),
+                  )}
+                  onChange={(value) =>
+                    updateForm("employeeId", value)
+                  }
+                />
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -1085,60 +1043,43 @@ export default function PerformancePage() {
                   />
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Review date
-                  </label>
+                <DateField
+                  label="Review date"
+                  required
+                  value={form.reviewDate}
+                  onChange={(value) =>
+                    updateForm("reviewDate", value)
+                  }
+                />
 
-                  <input
-                    type="date"
-                    value={
-                      form.reviewDate
-                    }
-                    onChange={(event) =>
-                      updateForm(
-                        "reviewDate",
-                        event.target.value,
-                      )
-                    }
-                    required
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Review period
-                  </label>
-
-                  <select
-                    value={form.period}
-                    onChange={(event) =>
-                      updateForm(
-                        "period",
-                        event.target
-                          .value as PerformancePeriod,
-                      )
-                    }
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-                  >
-                    <option value="MONTHLY">
-                      Monthly
-                    </option>
-
-                    <option value="QUARTERLY">
-                      Quarterly
-                    </option>
-
-                    <option value="HALF_YEARLY">
-                      Half Yearly
-                    </option>
-
-                    <option value="YEARLY">
-                      Yearly
-                    </option>
-                  </select>
-                </div>
+                <SelectField
+                  label="Review period"
+                  value={form.period}
+                  options={[
+                    {
+                      value: "MONTHLY",
+                      label: "Monthly",
+                    },
+                    {
+                      value: "QUARTERLY",
+                      label: "Quarterly",
+                    },
+                    {
+                      value: "HALF_YEARLY",
+                      label: "Half Yearly",
+                    },
+                    {
+                      value: "YEARLY",
+                      label: "Yearly",
+                    },
+                  ]}
+                  onChange={(value) =>
+                    updateForm(
+                      "period",
+                      value as PerformancePeriod,
+                    )
+                  }
+                />
               </div>
 
               <div>

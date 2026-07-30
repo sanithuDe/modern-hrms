@@ -14,13 +14,21 @@ export function validateRequest(schema: ZodTypeAny) {
     });
 
     if (!result.success) {
+      const errors = result.error.issues.map((issue) => ({
+        field: issue.path.join("."),
+        message: issue.message,
+      }));
+
+      const detail =
+        errors
+          .map((issue) => issue.message)
+          .filter(Boolean)
+          .join(". ") || "Validation failed";
+
       response.status(422).json({
         success: false,
-        message: "Validation failed",
-        errors: result.error.issues.map((issue) => ({
-          field: issue.path.join("."),
-          message: issue.message,
-        })),
+        message: detail,
+        errors,
       });
 
       return;

@@ -47,6 +47,7 @@ import {
 } from "../../../src/services/cv-portal.service";
 import { updateCandidateStage } from "../../../src/services/recruitment.service";
 import { sanitizePhoneDigits } from "../../../src/lib/phone";
+import { SelectField } from "../../../src/components/ui/SelectField";
 
 const HIRING_STAGES: CandidateStage[] = [
   "APPLIED",
@@ -210,18 +211,18 @@ function getStageClasses(
 ): string {
   switch (stage) {
     case "HIRED":
-      return "bg-emerald-100 text-emerald-700";
+      return "border-transparent bg-emerald-50 text-emerald-700";
 
     case "REJECTED":
     case "WITHDRAWN":
-      return "bg-red-100 text-red-700";
+      return "border-transparent bg-red-50 text-red-700";
 
     case "INTERVIEW":
     case "OFFERED":
-      return "bg-blue-100 text-blue-700";
+      return "border-transparent bg-blue-50 text-blue-700";
 
     default:
-      return "bg-slate-100 text-slate-700";
+      return "border-transparent bg-slate-50 text-slate-700";
   }
 }
 
@@ -521,40 +522,19 @@ function EmployeeCvPortal() {
 
         <div className="grid gap-6 p-6 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Job opening
-            </label>
-
-            <select
+            <SelectField
+              label="Job opening"
               required
-              value={
-                form.jobOpeningId
+              value={form.jobOpeningId}
+              placeholder="Select a job"
+              onChange={(value) =>
+                updateForm("jobOpeningId", value)
               }
-              onChange={(event) =>
-                updateForm(
-                  "jobOpeningId",
-                  event.target.value,
-                )
-              }
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
-            >
-              <option value="">
-                Select a job
-              </option>
-
-              {jobs.map((job) => (
-                <option
-                  key={job.id}
-                  value={job.id}
-                >
-                  {job.title}
-                  {job.location
-                    ? ` — ${job.location}`
-                    : ""}
-                  {` (${job.numberOfVacancies} vacancy${job.numberOfVacancies === 1 ? "" : "s"})`}
-                </option>
-              ))}
-            </select>
+              options={jobs.map((job) => ({
+                value: job.id,
+                label: `${job.title}${job.location ? ` — ${job.location}` : ""} (${job.numberOfVacancies} vacancy${job.numberOfVacancies === 1 ? "" : "s"})`,
+              }))}
+            />
           </div>
 
           <div>
@@ -1372,7 +1352,7 @@ function HrCvPortal({
           />
         ) : (
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-visible overflow-y-visible">
               <table className="min-w-full divide-y divide-slate-200">
                 <thead className="bg-slate-50">
                   <tr>
@@ -1455,48 +1435,39 @@ function HrCvPortal({
                             </p>
                           </td>
 
-                          <td className="px-5 py-4">
-                            <select
+                          <td className="px-5 py-4 align-middle">
+                            <SelectField
                               value={
                                 submission.stage
                               }
+                              required
+                              searchable={false}
                               disabled={
                                 updatingStageId ===
                                 submission.id
                               }
                               onChange={(
-                                event,
+                                value,
                               ) =>
                                 void handleStageChange(
                                   submission.id,
-                                  event
-                                    .target
-                                    .value as CandidateStage,
+                                  value as CandidateStage,
                                 )
                               }
-                              className={`rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-slate-900 disabled:opacity-50 ${getStageClasses(
+                              className="w-[148px] max-w-[148px]"
+                              triggerClassName={getStageClasses(
                                 submission.stage,
-                              )}`}
-                            >
-                              {HIRING_STAGES.map(
-                                (
-                                  stage,
-                                ) => (
-                                  <option
-                                    key={
-                                      stage
-                                    }
-                                    value={
-                                      stage
-                                    }
-                                  >
-                                    {humanize(
-                                      stage,
-                                    )}
-                                  </option>
-                                ),
                               )}
-                            </select>
+                              options={HIRING_STAGES.map(
+                                (stage) => ({
+                                  value: stage,
+                                  label:
+                                    humanize(
+                                      stage,
+                                    ),
+                                }),
+                              )}
+                            />
                           </td>
 
                           <td className="px-5 py-4">
@@ -1671,57 +1642,37 @@ function HrCvPortal({
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Job opening
-            </label>
-            <select
+            <SelectField
+              label="Job opening"
               value={selectedJobId}
-              onChange={(event) =>
-                setSelectedJobId(event.target.value)
-              }
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-            >
-              <option value="">
-                Select a job opening
-              </option>
-
-              {jobs.map((job) => (
-                <option
-                  key={job.id}
-                  value={job.id}
-                >
-                  {job.title}
-                </option>
-              ))}
-            </select>
+              placeholder="Select a job opening"
+              onChange={setSelectedJobId}
+              options={jobs.map((job) => ({
+                value: job.id,
+                label: job.title,
+              }))}
+            />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Hiring stage
-            </label>
-            <select
+            <SelectField
+              label="Hiring stage"
               value={rankingStageFilter}
-              onChange={(event) =>
+              placeholder="All stages"
+              searchable={false}
+              disabled={!selectedJobId}
+              onChange={(value) =>
                 setRankingStageFilter(
-                  event.target.value as CandidateStage | "",
+                  value as CandidateStage | "",
                 )
               }
-              disabled={!selectedJobId}
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-slate-900 disabled:bg-slate-50 disabled:opacity-60"
-            >
-              <option value="">
-                All stages
-              </option>
-              {HIRING_STAGES.map((stage) => (
-                <option
-                  key={stage}
-                  value={stage}
-                >
-                  {humanize(stage)}
-                </option>
-              ))}
-            </select>
+              options={HIRING_STAGES.map(
+                (stage) => ({
+                  value: stage,
+                  label: humanize(stage),
+                }),
+              )}
+            />
           </div>
         </div>
 
@@ -1740,8 +1691,8 @@ function HrCvPortal({
             {" "}for this job yet. Analyze CVs first to generate match scores.
           </p>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-slate-200">
-            <div className="overflow-x-auto">
+          <div className="rounded-2xl border border-slate-200">
+            <div className="overflow-x-auto overflow-y-visible overflow-y-visible">
               <table className="min-w-full divide-y divide-slate-200">
                 <thead className="bg-slate-50">
                   <tr>
@@ -1794,31 +1745,31 @@ function HrCvPortal({
                             : "Not available"}
                         </span>
                       </td>
-                      <td className="px-5 py-4">
-                        <select
+                      <td className="px-5 py-4 align-middle">
+                        <SelectField
                           value={item.stage}
+                          required
+                          searchable={false}
                           disabled={
                             updatingStageId === item.candidateId
                           }
-                          onChange={(event) =>
+                          onChange={(value) =>
                             void handleStageChange(
                               item.candidateId,
-                              event.target.value as CandidateStage,
+                              value as CandidateStage,
                             )
                           }
-                          className={`rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-slate-900 disabled:opacity-50 ${getStageClasses(
+                          className="w-[148px] max-w-[148px]"
+                          triggerClassName={getStageClasses(
                             item.stage,
-                          )}`}
-                        >
-                          {HIRING_STAGES.map((stage) => (
-                            <option
-                              key={stage}
-                              value={stage}
-                            >
-                              {humanize(stage)}
-                            </option>
-                          ))}
-                        </select>
+                          )}
+                          options={HIRING_STAGES.map(
+                            (stage) => ({
+                              value: stage,
+                              label: humanize(stage),
+                            }),
+                          )}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -2083,9 +2034,9 @@ function RankingTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-x-auto overflow-y-visible">
+              <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
               {[

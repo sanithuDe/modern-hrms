@@ -27,6 +27,9 @@ import {
     type Employee,
 } from "../../../src/services/employee.service";
 
+import { DateField } from "../../../src/components/ui/DateTimeFields";
+import { SelectField } from "../../../src/components/ui/SelectField";
+
 import {
     assignShift,
     deleteShiftAssignment,
@@ -849,187 +852,86 @@ export default function ShiftAssignmentsPage() {
             className="space-y-5"
           >
             <div>
-              <label
-                htmlFor="employeeId"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                Employee
-              </label>
-
               {editingId ? (
-                <input
-                  id="employeeId"
-                  type="text"
-                  readOnly
-                  value={
-                    editingAssignment
-                      ? `${editingAssignment.employee.employeeNumber} - ${getAssignmentEmployeeName(editingAssignment)}`
-                      : "Employee"
-                  }
-                  className="w-full rounded-xl border border-slate-300 bg-slate-100 px-3 py-3 text-sm text-slate-900 outline-none"
-                />
+                <>
+                  <label
+                    htmlFor="employeeId"
+                    className="mb-2 block text-sm font-semibold text-slate-700"
+                  >
+                    Employee
+                  </label>
+                  <input
+                    id="employeeId"
+                    type="text"
+                    readOnly
+                    value={
+                      editingAssignment
+                        ? `${editingAssignment.employee.employeeNumber} - ${getAssignmentEmployeeName(editingAssignment)}`
+                        : "Employee"
+                    }
+                    className="w-full rounded-xl border border-slate-300 bg-slate-100 px-3 py-3 text-sm text-slate-900 outline-none"
+                  />
+                </>
               ) : (
-                <select
-                  id="employeeId"
+                <SelectField
+                  label="Employee"
                   value={form.employeeId}
-                  onChange={(event) =>
-                    updateForm(
-                      "employeeId",
-                      event.target.value,
-                    )
-                  }
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900"
-                >
-                  <option value="">
-                    Select employee
-                  </option>
-
-                  {selectableEmployees.map(
-                    (employee) => (
-                      <option
-                        key={employee.id}
-                        value={employee.id}
-                      >
-                        {employee.employeeNumber}{" "}
-                        -{" "}
-                        {getEmployeeName(
-                          employee,
-                        )}
-                      </option>
-                    ),
+                  placeholder="Select employee"
+                  options={selectableEmployees.map(
+                    (employee) => ({
+                      value: employee.id,
+                      label: `${employee.employeeNumber} - ${getEmployeeName(employee)}`,
+                    }),
                   )}
-                </select>
+                  onChange={(value) =>
+                    updateForm("employeeId", value)
+                  }
+                />
               )}
             </div>
 
-            <div>
-              <label
-                htmlFor="shiftId"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                Shift
-              </label>
+            <SelectField
+              label="Shift"
+              value={form.shiftId}
+              placeholder="Select Day or Night Shift"
+              options={formShifts.map((shift) => ({
+                value: shift.id,
+                label: `${shift.name} (${formatMinutesAsTime(shift.startTimeMinutes)} - ${formatMinutesAsTime(shift.endTimeMinutes)}${shift.crossesMidnight ? ", next day" : ""})`,
+              }))}
+              onChange={(value) =>
+                updateForm("shiftId", value)
+              }
+            />
 
-              <select
-                id="shiftId"
-                value={form.shiftId}
-                onChange={(event) =>
-                  updateForm(
-                    "shiftId",
-                    event.target.value,
-                  )
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900"
-              >
-                <option value="">
-                  Select Day or Night
-                  Shift
-                </option>
+            <DateField
+              label="Effective From"
+              value={form.effectiveFrom}
+              onChange={(value) =>
+                updateForm("effectiveFrom", value)
+              }
+            />
 
-                {formShifts.map((shift) => (
-                  <option
-                    key={shift.id}
-                    value={shift.id}
-                  >
-                    {shift.name} (
-                    {formatMinutesAsTime(
-                      shift.startTimeMinutes,
-                    )}{" "}
-                    -{" "}
-                    {formatMinutesAsTime(
-                      shift.endTimeMinutes,
-                    )}
-                    {shift.crossesMidnight
-                      ? ", next day"
-                      : ""}
-                    )
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="effectiveFrom"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                Effective From
-              </label>
-
-              <input
-                id="effectiveFrom"
-                type="date"
-                value={form.effectiveFrom}
-                onChange={(event) =>
-                  updateForm(
-                    "effectiveFrom",
-                    event.target.value,
-                  )
-                }
-                className="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="effectiveTo"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                Effective To
-                <span className="ml-1 font-normal text-slate-400">
-                  Optional
-                </span>
-              </label>
-
-              <input
-                id="effectiveTo"
-                type="date"
-                min={form.effectiveFrom}
-                value={form.effectiveTo}
-                onChange={(event) =>
-                  updateForm(
-                    "effectiveTo",
-                    event.target.value,
-                  )
-                }
-                className="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900"
-              />
-            </div>
+            <DateField
+              label="Effective To"
+              value={form.effectiveTo}
+              minDate={form.effectiveFrom || undefined}
+              onChange={(value) =>
+                updateForm("effectiveTo", value)
+              }
+            />
 
             {editingId ? (
-              <div>
-                <label
-                  htmlFor="isActive"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
-                >
-                  Status
-                </label>
-
-                <select
-                  id="isActive"
-                  value={
-                    form.isActive
-                      ? "ACTIVE"
-                      : "ENDED"
-                  }
-                  onChange={(event) =>
-                    updateForm(
-                      "isActive",
-                      event.target
-                        .value ===
-                        "ACTIVE",
-                    )
-                  }
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900"
-                >
-                  <option value="ACTIVE">
-                    Active
-                  </option>
-                  <option value="ENDED">
-                    Ended
-                  </option>
-                </select>
-              </div>
+              <SelectField
+                label="Status"
+                value={form.isActive ? "ACTIVE" : "ENDED"}
+                options={[
+                  { value: "ACTIVE", label: "Active" },
+                  { value: "ENDED", label: "Ended" },
+                ]}
+                onChange={(value) =>
+                  updateForm("isActive", value === "ACTIVE")
+                }
+              />
             ) : null}
 
             <div className="flex gap-3">

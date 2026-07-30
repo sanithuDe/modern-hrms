@@ -32,6 +32,8 @@ import {
   type Position,
 } from "../../../src/services/position.service";
 
+import { SelectField } from "../../../src/components/ui/SelectField";
+
 interface StoredUser {
   email: string;
   role: string;
@@ -497,39 +499,19 @@ export default function PositionsPage() {
                 </div>
 
                 <div className="mt-5">
-                  <label
-                    htmlFor="department"
-                    className="mb-2 block text-sm font-medium text-slate-700"
-                  >
-                    Department
-                  </label>
-
-                  <select
-                    id="department"
+                  <SelectField
+                    label="Department"
                     required
                     value={departmentId}
-                    onChange={(event) =>
-                      setDepartmentId(
-                        event.target.value,
-                      )
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-                  >
-                    <option value="">
-                      Select a department
-                    </option>
-
-                    {departments.map(
-                      (department) => (
-                        <option
-                          key={department.id}
-                          value={department.id}
-                        >
-                          {department.name}
-                        </option>
-                      ),
+                    placeholder="Select a department"
+                    options={departments.map(
+                      (department) => ({
+                        value: department.id,
+                        label: department.name,
+                      }),
                     )}
-                  </select>
+                    onChange={setDepartmentId}
+                  />
                 </div>
 
                 <div className="mt-5">
@@ -768,39 +750,19 @@ export default function PositionsPage() {
               </div>
 
               <div className="mt-5">
-                <label
-                  htmlFor="editDepartment"
-                  className="mb-2 block text-sm font-medium text-slate-900"
-                >
-                  Department
-                </label>
-
-                <select
-                  id="editDepartment"
+                <SelectField
+                  label="Department"
                   required
                   value={editDepartmentId}
-                  onChange={(event) =>
-                    setEditDepartmentId(
-                      event.target.value,
-                    )
-                  }
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-                >
-                  <option value="">
-                    Select a department
-                  </option>
-
-                  {departments.map(
-                    (department) => (
-                      <option
-                        key={department.id}
-                        value={department.id}
-                      >
-                        {department.name}
-                      </option>
-                    ),
+                  placeholder="Select a department"
+                  options={departments.map(
+                    (department) => ({
+                      value: department.id,
+                      label: department.name,
+                    }),
                   )}
-                </select>
+                  onChange={setEditDepartmentId}
+                />
               </div>
 
               <div className="mt-5">

@@ -7,6 +7,7 @@ import {
     type AttendanceFilters,
     getMyAttendance,
 } from "@/src/services/attendance.service";
+import { DateField } from "@/src/components/ui/DateTimeFields";
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString([], {
@@ -162,43 +163,18 @@ export default function MyAttendancePage() {
         className="rounded-xl border bg-white p-5 shadow-sm"
       >
         <div className="grid gap-4 md:grid-cols-4">
-          <div>
-            <label
-              htmlFor="startDate"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Start date
-            </label>
+          <DateField
+            label="Start date"
+            value={startDate}
+            onChange={setStartDate}
+          />
 
-            <input
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(event) =>
-                setStartDate(event.target.value)
-              }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="endDate"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              End date
-            </label>
-
-            <input
-              id="endDate"
-              type="date"
-              value={endDate}
-              onChange={(event) =>
-                setEndDate(event.target.value)
-              }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500"
-            />
-          </div>
+          <DateField
+            label="End date"
+            value={endDate}
+            minDate={startDate || undefined}
+            onChange={setEndDate}
+          />
 
           <div className="flex items-end">
             <button
