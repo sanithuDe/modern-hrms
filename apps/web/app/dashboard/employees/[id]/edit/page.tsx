@@ -9,19 +9,10 @@ import {
 } from "next/navigation";
 import {
     useEffect,
-    useMemo,
     useState,
     type ChangeEvent,
     type FormEvent,
 } from "react";
-
-import Header from "../../../../../src/components/layout/header";
-import Sidebar from "../../../../../src/components/layout/sidebar";
-
-import {
-    getDepartments,
-    type Department,
-} from "../../../../../src/services/department.service";
 
 import {
     getEmployeeById,
@@ -29,11 +20,6 @@ import {
     type UpdateEmployeeInput,
     type UserRole,
 } from "../../../../../src/services/employee.service";
-
-import {
-    getPositions,
-    type Position,
-} from "../../../../../src/services/position.service";
 
 interface StoredUser {
   email: string;
@@ -45,8 +31,8 @@ interface EditEmployeeForm {
   lastName: string;
   phone: string;
   hireDate: string;
-  departmentId: string;
-  positionId: string;
+  departmentName: string;
+  positionTitle: string;
   role: UserRole;
 }
 
@@ -55,8 +41,8 @@ const initialForm: EditEmployeeForm = {
   lastName: "",
   phone: "",
   hireDate: "",
-  departmentId: "",
-  positionId: "",
+  departmentName: "",
+  positionTitle: "",
   role: "EMPLOYEE",
 };
 
@@ -81,12 +67,6 @@ export default function EditEmployeePage() {
 
   const [form, setForm] =
     useState<EditEmployeeForm>(initialForm);
-
-  const [departments, setDepartments] =
-    useState<Department[]>([]);
-
-  const [positions, setPositions] =
-    useState<Position[]>([]);
 
   const [isLoading, setIsLoading] =
     useState(true);
@@ -139,18 +119,8 @@ export default function EditEmployeePage() {
         setIsLoading(true);
         setError("");
 
-        const [
-          employeeData,
-          departmentData,
-          positionData,
-        ] = await Promise.all([
-          getEmployeeById(params.id),
-          getDepartments(),
-          getPositions(),
-        ]);
-
-        setDepartments(departmentData);
-        setPositions(positionData);
+        const employeeData =
+          await getEmployeeById(params.id);
 
         setForm({
           firstName: employeeData.firstName,
@@ -159,10 +129,10 @@ export default function EditEmployeePage() {
           hireDate: formatDateForInput(
             employeeData.hireDate,
           ),
-          departmentId:
-            employeeData.departmentId ?? "",
-          positionId:
-            employeeData.positionId ?? "",
+          departmentName:
+            employeeData.department?.name ?? "",
+          positionTitle:
+            employeeData.position?.title ?? "",
           role: employeeData.user.role,
         });
       } catch (requestError: unknown) {
@@ -188,24 +158,14 @@ export default function EditEmployeePage() {
     void loadPageData();
   }, [params.id, user]);
 
-  const filteredPositions = useMemo(() => {
-    if (!form.departmentId) {
-      return [];
-    }
-
-    return positions.filter(
-      (position) =>
-        position.departmentId ===
-        form.departmentId,
-    );
-  }, [positions, form.departmentId]);
-
   function updateTextField(
     field:
       | "firstName"
       | "lastName"
       | "phone"
-      | "hireDate",
+      | "hireDate"
+      | "departmentName"
+      | "positionTitle",
     value: string,
   ) {
     setForm((current) => ({
@@ -220,25 +180,6 @@ export default function EditEmployeePage() {
     setForm((current) => ({
       ...current,
       role: event.target.value as UserRole,
-    }));
-  }
-
-  function handleDepartmentChange(
-    event: ChangeEvent<HTMLSelectElement>,
-  ) {
-    setForm((current) => ({
-      ...current,
-      departmentId: event.target.value,
-      positionId: "",
-    }));
-  }
-
-  function handlePositionChange(
-    event: ChangeEvent<HTMLSelectElement>,
-  ) {
-    setForm((current) => ({
-      ...current,
-      positionId: event.target.value,
     }));
   }
 
@@ -264,30 +205,13 @@ export default function EditEmployeePage() {
       return;
     }
 
-    if (!form.departmentId) {
-      setError("Please select a department.");
+    if (!form.departmentName.trim()) {
+      setError("Please enter a department.");
       return;
     }
 
-    if (!form.positionId) {
-      setError("Please select a position.");
-      return;
-    }
-
-    const selectedPosition =
-      positions.find(
-        (position) =>
-          position.id === form.positionId,
-      );
-
-    if (
-      !selectedPosition ||
-      selectedPosition.departmentId !==
-        form.departmentId
-    ) {
-      setError(
-        "The selected position does not belong to the selected department.",
-      );
+    if (!form.positionTitle.trim()) {
+      setError("Please enter a position.");
       return;
     }
 
@@ -296,9 +220,11 @@ export default function EditEmployeePage() {
       lastName: form.lastName.trim(),
       phone: form.phone.trim() || null,
       hireDate: form.hireDate,
-      departmentId: form.departmentId,
-      positionId: form.positionId,
-      role: form.role,
+      departmentName: form.departmentName.trim(),
+      positionTitle: form.positionTitle.trim(),
+      ...(user?.role === "SUPER_ADMIN" && form.role !== "SUPER_ADMIN"
+        ? { role: form.role }
+        : {}),
     };
 
     try {
@@ -345,17 +271,7 @@ export default function EditEmployeePage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      <Sidebar role={user.role} />
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Header
-          email={user.email}
-          role={user.role}
-        />
-
-        <main className="flex-1 p-8">
-          <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-4xl space-y-6">
             <Link
               href={`/dashboard/employees/${params.id}`}
               className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
@@ -484,76 +400,50 @@ export default function EditEmployeePage() {
 
                   <div>
                     <label
-                      htmlFor="departmentId"
+                      htmlFor="departmentName"
                       className="mb-2 block text-sm font-medium text-slate-700"
                     >
                       Department
                     </label>
 
-                    <select
-                      id="departmentId"
+                    <input
+                      id="departmentName"
+                      type="text"
                       required
-                      value={form.departmentId}
-                      onChange={
-                        handleDepartmentChange
+                      placeholder="e.g. Security"
+                      value={form.departmentName}
+                      onChange={(event) =>
+                        updateTextField(
+                          "departmentName",
+                          event.target.value,
+                        )
                       }
                       className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-                    >
-                      <option value="">
-                        Select a department
-                      </option>
-
-                      {departments.map(
-                        (department) => (
-                          <option
-                            key={department.id}
-                            value={department.id}
-                          >
-                            {department.name}
-                          </option>
-                        ),
-                      )}
-                    </select>
+                    />
                   </div>
 
                   <div>
                     <label
-                      htmlFor="positionId"
+                      htmlFor="positionTitle"
                       className="mb-2 block text-sm font-medium text-slate-700"
                     >
                       Position
                     </label>
 
-                    <select
-                      id="positionId"
+                    <input
+                      id="positionTitle"
+                      type="text"
                       required
-                      value={form.positionId}
-                      onChange={
-                        handlePositionChange
+                      placeholder="e.g. Security Engineer"
+                      value={form.positionTitle}
+                      onChange={(event) =>
+                        updateTextField(
+                          "positionTitle",
+                          event.target.value,
+                        )
                       }
-                      disabled={!form.departmentId}
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100"
-                    >
-                      <option value="">
-                        {!form.departmentId
-                          ? "Select a department first"
-                          : filteredPositions.length ===
-                              0
-                            ? "No positions available"
-                            : "Select a position"}
-                      </option>
-
-                      {filteredPositions.map(
-                        (position) => (
-                          <option
-                            key={position.id}
-                            value={position.id}
-                          >
-                            {position.title}
-                          </option>
-                        ),
-                      )}
-                    </select>
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
+                    />
                   </div>
 
                   <div>
@@ -564,26 +454,46 @@ export default function EditEmployeePage() {
                       Role
                     </label>
 
-                    <select
-                      id="role"
-                      value={form.role}
-                      onChange={handleRoleChange}
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-                    >
-                      <option value="EMPLOYEE">
-                        Employee
-                      </option>
-
-                      <option value="HR_MANAGER">
-                        HR Manager
-                      </option>
-
-                      {user.role === "SUPER_ADMIN" && (
-                        <option value="SUPER_ADMIN">
-                          Super Admin
+                    {user.role === "SUPER_ADMIN" ? (
+                      <select
+                        id="role"
+                        value={form.role}
+                        onChange={handleRoleChange}
+                        disabled={form.role === "SUPER_ADMIN"}
+                        className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100"
+                      >
+                        <option value="EMPLOYEE">
+                          Employee
                         </option>
-                      )}
-                    </select>
+                        <option value="HR_MANAGER">
+                          HR Manager
+                        </option>
+                        {form.role === "SUPER_ADMIN" ? (
+                          <option value="SUPER_ADMIN">
+                            Super Admin
+                          </option>
+                        ) : null}
+                      </select>
+                    ) : (
+                      <>
+                        <input
+                          id="role"
+                          type="text"
+                          readOnly
+                          value={
+                            form.role === "HR_MANAGER"
+                              ? "HR Manager"
+                              : form.role === "SUPER_ADMIN"
+                                ? "Super Admin"
+                                : "Employee"
+                          }
+                          className="w-full rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-slate-900 outline-none"
+                        />
+                        <p className="mt-2 text-xs text-slate-500">
+                          HR Managers cannot change account roles.
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -609,9 +519,6 @@ export default function EditEmployeePage() {
                 </div>
               </form>
             )}
-          </div>
-        </main>
-      </div>
     </div>
   );
 }

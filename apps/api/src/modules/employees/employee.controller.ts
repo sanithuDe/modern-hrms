@@ -144,6 +144,10 @@ export async function createEmployeeController(
           request.body.departmentId,
         positionId:
           request.body.positionId,
+        departmentName:
+          request.body.departmentName,
+        positionTitle:
+          request.body.positionTitle,
       });
 
     response.status(201).json({
@@ -340,6 +344,10 @@ export async function updateEmployeeController(
           request.body.departmentId,
         positionId:
           request.body.positionId,
+        departmentName:
+          request.body.departmentName,
+        positionTitle:
+          request.body.positionTitle,
         role,
         requesterRole:
           authenticatedUser.role,

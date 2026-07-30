@@ -19,9 +19,6 @@ import {
   type FormEvent,
 } from "react";
 
-import Header from "../../../src/components/layout/header";
-import Sidebar from "../../../src/components/layout/sidebar";
-
 import {
   getDepartments,
   type Department,
@@ -432,11 +429,7 @@ export default function PositionsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      <Sidebar role={user.role} />
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <main className="flex-1 p-8">
+    <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">
               Positions
@@ -733,8 +726,6 @@ export default function PositionsPage() {
               )}
             </section>
           </div>
-        </main>
-      </div>
 
       {editingPosition && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">

@@ -8,6 +8,7 @@ import {
   approvePayrollController,
   createSalaryProfileController,
   generatePayrollController,
+  getMyPayrollsController,
   getPayrollsController,
   getSalaryProfilesController,
   markPayrollPaidController,
@@ -59,6 +60,12 @@ payrollRouter.get(
     "HR_MANAGER",
   ),
   getPayrollsController,
+);
+
+payrollRouter.get(
+  "/my",
+  authorizeRoles("EMPLOYEE"),
+  getMyPayrollsController,
 );
 
 payrollRouter.post(

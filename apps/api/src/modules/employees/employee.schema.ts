@@ -72,6 +72,20 @@ export const createEmployeeSchema =
 
       positionId:
         optionalIdSchema,
+
+      departmentName: z
+        .string()
+        .trim()
+        .max(100)
+        .nullable()
+        .optional(),
+
+      positionTitle: z
+        .string()
+        .trim()
+        .max(100)
+        .nullable()
+        .optional(),
     }),
   });
 
@@ -110,6 +124,20 @@ export const updateEmployeeSchema =
 
         positionId:
           optionalIdSchema,
+
+        departmentName: z
+          .string()
+          .trim()
+          .max(100)
+          .nullable()
+          .optional(),
+
+        positionTitle: z
+          .string()
+          .trim()
+          .max(100)
+          .nullable()
+          .optional(),
 
         role: z
           .enum([

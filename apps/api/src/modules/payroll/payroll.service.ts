@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "../../generated/prisma/client.js";
 
 import { prisma } from "../../lib/prisma.js";
 
@@ -236,6 +236,39 @@ export async function getPayrolls() {
   return prisma.payroll.findMany({
     include: payrollInclude,
 
+    orderBy: [
+      {
+        year: "desc",
+      },
+      {
+        month: "desc",
+      },
+      {
+        createdAt: "desc",
+      },
+    ],
+  });
+}
+
+export async function getMyPayrolls(userId: string) {
+  const employee = await prisma.employee.findUnique({
+    where: {
+      userId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!employee) {
+    return [];
+  }
+
+  return prisma.payroll.findMany({
+    where: {
+      employeeId: employee.id,
+    },
+    include: payrollInclude,
     orderBy: [
       {
         year: "desc",

@@ -2,7 +2,7 @@ import {
   AttendanceMethod,
   AttendanceStatus,
   Prisma,
-} from "@prisma/client";
+} from "../../generated/prisma/client.js";
 
 import { prisma } from "../../lib/prisma.js";
 

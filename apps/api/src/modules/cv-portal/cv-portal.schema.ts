@@ -48,12 +48,25 @@ export const createMyCvSubmissionSchema =
           z.literal(""),
         ),
 
+      candidateName: z
+        .string()
+        .trim()
+        .max(
+          150,
+          "Candidate name is too long",
+        )
+        .optional()
+        .or(
+          z.literal(""),
+        ),
+
+      /** @deprecated Use candidateName — kept for older clients */
       currentCompany: z
         .string()
         .trim()
         .max(
           150,
-          "Current company is too long",
+          "Candidate name is too long",
         )
         .optional()
         .or(
@@ -108,6 +121,19 @@ export const createMyCvSubmissionSchema =
         .or(
           z.literal(""),
         ),
+    })
+    .superRefine((body, context) => {
+      const name =
+        body.candidateName?.trim() ||
+        body.currentCompany?.trim();
+
+      if (!name) {
+        context.addIssue({
+          code: "custom",
+          path: ["candidateName"],
+          message: "Candidate name is required",
+        });
+      }
     }),
   });
 

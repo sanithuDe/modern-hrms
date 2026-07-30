@@ -9,9 +9,6 @@ import {
     useState,
 } from "react";
 
-import Header from "../../../src/components/layout/header";
-import Sidebar from "../../../src/components/layout/sidebar";
-
 import {
     getEmployees,
     type Employee,
@@ -166,12 +163,7 @@ export default function EmployeesPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      <Sidebar role={user.role} />
-
-      <div className="flex min-w-0 flex-1 flex-col">
-
-        <main className="flex-1 p-8">
+    <div className="space-y-6">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
             <div>
               <h1 className="text-3xl font-bold text-slate-900">
@@ -347,8 +339,6 @@ export default function EmployeesPage() {
               </div>
             )}
           </section>
-        </main>
-      </div>
     </div>
   );
 }

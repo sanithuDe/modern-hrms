@@ -4,10 +4,12 @@ import type {
   Response,
 } from "express";
 
+import type { AuthenticatedRequest } from "../../middleware/authenticate.js";
 import {
   approvePayroll,
   createSalaryProfile,
   generatePayroll,
+  getMyPayrolls,
   getPayrolls,
   getSalaryProfiles,
   markPayrollPaid,
@@ -134,6 +136,31 @@ export async function getPayrollsController(
   try {
     const payrolls =
       await getPayrolls();
+
+    response.status(200).json({
+      success: true,
+      data: payrolls,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getMyPayrollsController(
+  request: AuthenticatedRequest,
+  response: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!request.user) {
+      response.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+      return;
+    }
+
+    const payrolls = await getMyPayrolls(request.user.id);
 
     response.status(200).json({
       success: true,

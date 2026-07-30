@@ -132,6 +132,16 @@ export async function getPayrolls(): Promise<
   return response.data.data;
 }
 
+export async function getMyPayrolls(): Promise<
+  Payroll[]
+> {
+  const response = await api.get<
+    ApiResponse<Payroll[]>
+  >("/payroll/my");
+
+  return response.data.data;
+}
+
 export async function generatePayroll(
   input: GeneratePayrollInput,
 ): Promise<Payroll> {

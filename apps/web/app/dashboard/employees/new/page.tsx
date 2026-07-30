@@ -6,29 +6,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
-  useMemo,
   useState,
   type ChangeEvent,
   type FormEvent,
 } from "react";
 
-import Header from "../../../../src/components/layout/header";
-import Sidebar from "../../../../src/components/layout/sidebar";
-
-import {
-  getDepartments,
-  type Department,
-} from "../../../../src/services/department.service";
-
 import {
   createEmployee,
   type UserRole,
 } from "../../../../src/services/employee.service";
-
-import {
-  getPositions,
-  type Position,
-} from "../../../../src/services/position.service";
 
 type CreatableUserRole = Exclude<
   UserRole,
@@ -49,8 +35,8 @@ interface CreateEmployeeForm {
   lastName: string;
   phone: string;
   hireDate: string;
-  departmentId: string | null;
-  positionId: string | null;
+  departmentName: string;
+  positionTitle: string;
 }
 
 const initialForm: CreateEmployeeForm = {
@@ -62,8 +48,8 @@ const initialForm: CreateEmployeeForm = {
   lastName: "",
   phone: "",
   hireDate: "",
-  departmentId: null,
-  positionId: null,
+  departmentName: "",
+  positionTitle: "",
 };
 
 function getErrorMessage(
@@ -92,17 +78,6 @@ export default function AddEmployeePage() {
     useState<CreateEmployeeForm>(
       initialForm,
     );
-
-  const [departments, setDepartments] =
-    useState<Department[]>([]);
-
-  const [positions, setPositions] =
-    useState<Position[]>([]);
-
-  const [
-    isLoadingOptions,
-    setIsLoadingOptions,
-  ] = useState(true);
 
   const [isSubmitting, setIsSubmitting] =
     useState(false);
@@ -165,62 +140,6 @@ export default function AddEmployeePage() {
     }
   }, [router]);
 
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    async function loadEmployeeOptions() {
-      try {
-        setIsLoadingOptions(true);
-        setError("");
-
-        const [
-          departmentData,
-          positionData,
-        ] = await Promise.all([
-          getDepartments(),
-          getPositions(),
-        ]);
-
-        setDepartments(departmentData);
-        setPositions(positionData);
-      } catch (requestError: unknown) {
-        console.error(
-          "Failed to load employee options:",
-          requestError,
-        );
-
-        setError(
-          getErrorMessage(
-            requestError,
-            "Unable to load departments and positions.",
-          ),
-        );
-      } finally {
-        setIsLoadingOptions(false);
-      }
-    }
-
-    void loadEmployeeOptions();
-  }, [user]);
-
-  const filteredPositions =
-    useMemo(() => {
-      if (!form.departmentId) {
-        return [];
-      }
-
-      return positions.filter(
-        (position) =>
-          position.departmentId ===
-          form.departmentId,
-      );
-    }, [
-      positions,
-      form.departmentId,
-    ]);
-
   function updateField(
     field:
       | "email"
@@ -229,7 +148,9 @@ export default function AddEmployeePage() {
       | "firstName"
       | "lastName"
       | "phone"
-      | "hireDate",
+      | "hireDate"
+      | "departmentName"
+      | "positionTitle",
     value: string,
   ): void {
     setForm((current) => ({
@@ -251,48 +172,12 @@ export default function AddEmployeePage() {
     }));
   }
 
-  function handleDepartmentChange(
-    event: ChangeEvent<HTMLSelectElement>,
-  ): void {
-    const selectedDepartmentId =
-      event.target.value || null;
-
-    setForm((current) => ({
-      ...current,
-      departmentId:
-        selectedDepartmentId,
-      positionId: null,
-    }));
-  }
-
-  function handlePositionChange(
-    event: ChangeEvent<HTMLSelectElement>,
-  ): void {
-    const selectedPositionId =
-      event.target.value || null;
-
-    setForm((current) => ({
-      ...current,
-      positionId: selectedPositionId,
-    }));
-  }
-
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
 
     if (!user) {
-      return;
-    }
-
-    const token =
-      window.localStorage.getItem(
-        "accessToken",
-      );
-
-    if (!token) {
-      router.replace("/login");
       return;
     }
 
@@ -309,43 +194,17 @@ export default function AddEmployeePage() {
       return;
     }
 
-    if (!form.departmentId) {
+    if (!form.departmentName.trim()) {
       setError(
-        "Please select a department.",
+        "Please enter a department.",
       );
 
       return;
     }
 
-    if (!form.positionId) {
+    if (!form.positionTitle.trim()) {
       setError(
-        "Please select a position.",
-      );
-
-      return;
-    }
-
-    const selectedPosition =
-      positions.find(
-        (position) =>
-          position.id ===
-          form.positionId,
-      );
-
-    if (!selectedPosition) {
-      setError(
-        "The selected position was not found.",
-      );
-
-      return;
-    }
-
-    if (
-      selectedPosition.departmentId !==
-      form.departmentId
-    ) {
-      setError(
-        "The selected position does not belong to the selected department.",
+        "Please enter a position.",
       );
 
       return;
@@ -359,7 +218,10 @@ export default function AddEmployeePage() {
           .trim()
           .toLowerCase(),
         password: form.password,
-        role: form.role,
+        role:
+          user.role === "HR_MANAGER"
+            ? "EMPLOYEE"
+            : form.role,
         employeeNumber:
           form.employeeNumber.trim(),
         firstName:
@@ -370,9 +232,10 @@ export default function AddEmployeePage() {
           form.phone.trim() ||
           undefined,
         hireDate: form.hireDate,
-        departmentId:
-          form.departmentId,
-        positionId: form.positionId,
+        departmentName:
+          form.departmentName.trim(),
+        positionTitle:
+          form.positionTitle.trim(),
       });
 
       router.push(
@@ -403,17 +266,7 @@ export default function AddEmployeePage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      <Sidebar role={user.role} />
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Header
-          email={user.email}
-          role={user.role}
-        />
-
-        <main className="flex-1 p-8">
-          <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-4xl space-y-6">
             <Link
               href="/dashboard/employees"
               className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
@@ -506,33 +359,33 @@ export default function AddEmployeePage() {
                       Role
                     </label>
 
-                    <select
-                      id="role"
-                      value={form.role}
-                      onChange={
-                        handleRoleChange
-                      }
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-                    >
-                      <option value="EMPLOYEE">
-                        Employee
-                      </option>
-
-                      {user.role ===
-                        "SUPER_ADMIN" && (
+                    {user.role === "SUPER_ADMIN" ? (
+                      <select
+                        id="role"
+                        value={form.role}
+                        onChange={handleRoleChange}
+                        className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
+                      >
+                        <option value="EMPLOYEE">
+                          Employee
+                        </option>
                         <option value="HR_MANAGER">
                           HR Manager
                         </option>
-                      )}
-                    </select>
-
-                    {user.role ===
-                      "HR_MANAGER" && (
-                      <p className="mt-2 text-xs text-slate-500">
-                        HR Managers can only
-                        create Employee
-                        accounts.
-                      </p>
+                      </select>
+                    ) : (
+                      <>
+                        <input
+                          id="role"
+                          type="text"
+                          readOnly
+                          value="Employee"
+                          className="w-full rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-slate-900 outline-none"
+                        />
+                        <p className="mt-2 text-xs text-slate-500">
+                          HR Managers can only create Employee accounts.
+                        </p>
+                      </>
                     )}
                   </div>
                 </div>
@@ -663,100 +516,50 @@ export default function AddEmployeePage() {
 
                   <div>
                     <label
-                      htmlFor="departmentId"
+                      htmlFor="departmentName"
                       className="mb-2 block text-sm font-medium text-slate-700"
                     >
                       Department
                     </label>
 
-                    <select
-                      id="departmentId"
+                    <input
+                      id="departmentName"
+                      type="text"
                       required
-                      value={
-                        form.departmentId ??
-                        ""
+                      placeholder="e.g. Security"
+                      value={form.departmentName}
+                      onChange={(event) =>
+                        updateField(
+                          "departmentName",
+                          event.target.value,
+                        )
                       }
-                      onChange={
-                        handleDepartmentChange
-                      }
-                      disabled={
-                        isLoadingOptions
-                      }
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100"
-                    >
-                      <option value="">
-                        {isLoadingOptions
-                          ? "Loading departments..."
-                          : "Select a department"}
-                      </option>
-
-                      {departments.map(
-                        (department) => (
-                          <option
-                            key={
-                              department.id
-                            }
-                            value={
-                              department.id
-                            }
-                          >
-                            {
-                              department.name
-                            }
-                          </option>
-                        ),
-                      )}
-                    </select>
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
+                    />
                   </div>
 
                   <div>
                     <label
-                      htmlFor="positionId"
+                      htmlFor="positionTitle"
                       className="mb-2 block text-sm font-medium text-slate-700"
                     >
                       Position
                     </label>
 
-                    <select
-                      id="positionId"
+                    <input
+                      id="positionTitle"
+                      type="text"
                       required
-                      value={
-                        form.positionId ??
-                        ""
+                      placeholder="e.g. Security Engineer"
+                      value={form.positionTitle}
+                      onChange={(event) =>
+                        updateField(
+                          "positionTitle",
+                          event.target.value,
+                        )
                       }
-                      onChange={
-                        handlePositionChange
-                      }
-                      disabled={
-                        isLoadingOptions ||
-                        !form.departmentId
-                      }
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100"
-                    >
-                      <option value="">
-                        {!form.departmentId
-                          ? "Select a department first"
-                          : filteredPositions.length ===
-                              0
-                            ? "No positions available"
-                            : "Select a position"}
-                      </option>
-
-                      {filteredPositions.map(
-                        (position) => (
-                          <option
-                            key={
-                              position.id
-                            }
-                            value={
-                              position.id
-                            }
-                          >
-                            {position.title}
-                          </option>
-                        ),
-                      )}
-                    </select>
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
+                    />
                   </div>
                 </div>
               </section>
@@ -771,10 +574,7 @@ export default function AddEmployeePage() {
 
                 <button
                   type="submit"
-                  disabled={
-                    isSubmitting ||
-                    isLoadingOptions
-                  }
+                  disabled={isSubmitting}
                   className="flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Save size={17} />
@@ -785,9 +585,6 @@ export default function AddEmployeePage() {
                 </button>
               </div>
             </form>
-          </div>
-        </main>
-      </div>
     </div>
   );
 }
