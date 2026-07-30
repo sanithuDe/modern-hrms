@@ -28,6 +28,7 @@ import {
     type CvPortalJob,
     type EmployeeCvSubmission,
 } from "../../../src/services/cv-portal.service";
+import { sanitizePhoneDigits } from "../../../src/lib/phone";
 
 interface StoredUser {
   id?: string;
@@ -295,7 +296,10 @@ export default function CvPortalPage() {
     setForm(
       (currentForm) => ({
         ...currentForm,
-        [name]: value,
+        [name]:
+          name === "phone"
+            ? sanitizePhoneDigits(value)
+            : value,
       }),
     );
   }
@@ -530,18 +534,6 @@ export default function CvPortalPage() {
 
   return (
     <div className="space-y-8">
-      <header className="max-w-3xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand-mid)]">
-          Careers desk
-        </p>
-        <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-[var(--ink)] sm:text-4xl">
-          CV Portal
-        </h1>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-[var(--ink-muted)]">
-          Pick an open role, attach your CV, and track every step of your application in one place.
-        </p>
-      </header>
-
       {error ? (
         <div className="rounded-[var(--radius-md)] border border-red-200 bg-[var(--danger-soft)] px-4 py-3 text-sm font-medium text-[var(--danger)]">
           {error}
@@ -663,6 +655,11 @@ export default function CvPortalPage() {
                   id="phone"
                   name="phone"
                   type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  pattern="[0-9]*"
+                  maxLength={15}
+                  placeholder="Digits only"
                   value={form.phone}
                   onChange={handleInputChange}
                   disabled={submitting}

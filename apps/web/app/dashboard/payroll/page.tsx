@@ -842,21 +842,7 @@ export default function PayrollPage() {
   }
 
   return (
-    <div className="p-8">
-      <div>
-            <h1 className="text-3xl font-bold text-slate-900">
-              {isEmployee
-                ? "My Payroll"
-                : "Payroll"}
-            </h1>
-
-            <p className="mt-2 text-slate-600">
-              {isEmployee
-                ? "View your monthly salary and payroll history."
-                : "Manage employee salary profiles and monthly payroll."}
-            </p>
-          </div>
-
+    <div className="space-y-6">
           {error && (
             <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               <TriangleAlert

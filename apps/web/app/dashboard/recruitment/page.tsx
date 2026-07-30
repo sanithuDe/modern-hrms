@@ -45,6 +45,7 @@ import {
   type RecruitmentDepartment,
   type RecruitmentPosition,
 } from "../../../src/services/recruitment.service";
+import { sanitizePhoneDigits } from "../../../src/lib/phone";
 
 interface StoredUser {
   email: string;
@@ -1102,19 +1103,7 @@ export default function RecruitmentPage() {
 
   return (
     <div className="space-y-8">
-      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">
-            Recruitment
-          </h1>
-
-          <p className="mt-2 text-slate-600">
-            Manage job openings and
-            candidate applications.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
+      <section className="flex flex-wrap justify-end gap-3">
           <button
             type="button"
             onClick={
@@ -1136,7 +1125,6 @@ export default function RecruitmentPage() {
             <Plus size={18} />
             New Job
           </button>
-        </div>
       </section>
 
       {error ? (
@@ -1936,6 +1924,7 @@ export default function RecruitmentPage() {
 
               <FormInput
                 label="Phone"
+                type="tel"
                 value={
                   candidateForm.phone
                 }
@@ -1943,7 +1932,7 @@ export default function RecruitmentPage() {
                   setCandidateForm(
                     (current) => ({
                       ...current,
-                      phone: value,
+                      phone: sanitizePhoneDigits(value),
                     }),
                   )
                 }
@@ -2385,6 +2374,15 @@ function FormInput({
         type={type}
         value={value}
         required={required}
+        inputMode={
+          type === "tel" ? "numeric" : undefined
+        }
+        pattern={
+          type === "tel" ? "[0-9]*" : undefined
+        }
+        maxLength={
+          type === "tel" ? 15 : undefined
+        }
         min={
           type === "number"
             ? "0"

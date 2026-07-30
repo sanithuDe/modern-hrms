@@ -226,14 +226,14 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f3f6fa]">
+    <div className="flex min-h-[var(--ui-vh)] bg-[#f3f6fa]">
       <Sidebar role={user.role} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header email={user.email} role={user.role} />
 
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-7 lg:py-7">
-          <div className="mx-auto w-full max-w-[1400px]">
+        <main className="flex flex-1 flex-col px-4 py-6 sm:px-6 lg:px-7 lg:py-7">
+          <div className="mx-auto w-full max-w-[1400px] flex-1">
             {children}
           </div>
         </main>

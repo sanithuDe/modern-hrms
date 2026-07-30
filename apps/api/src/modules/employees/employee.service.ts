@@ -767,8 +767,57 @@ export async function updateEmployeeStatus(
   return getEmployeeById(id);
 }
 
+async function resolveFallbackUserId(
+  transaction: Prisma.TransactionClient,
+  userIdToDelete: string,
+  preferredUserId?: string,
+): Promise<string> {
+  if (
+    preferredUserId &&
+    preferredUserId !== userIdToDelete
+  ) {
+    const preferred =
+      await transaction.user.findUnique({
+        where: { id: preferredUserId },
+        select: { id: true },
+      });
+
+    if (preferred) {
+      return preferred.id;
+    }
+  }
+
+  const fallback =
+    await transaction.user.findFirst({
+      where: {
+        id: { not: userIdToDelete },
+        role: {
+          in: [
+            UserRole.SUPER_ADMIN,
+            UserRole.HR_MANAGER,
+          ],
+        },
+        status: UserStatus.ACTIVE,
+      },
+      orderBy: [
+        { role: "asc" },
+        { createdAt: "asc" },
+      ],
+      select: { id: true },
+    });
+
+  if (!fallback) {
+    throw new Error(
+      "Cannot delete this employee because related records still reference their account, and no other admin is available to reassign them.",
+    );
+  }
+
+  return fallback.id;
+}
+
 export async function deleteEmployee(
   id: string,
+  deletedByUserId?: string,
 ) {
   const employee =
     await prisma.employee.findUnique({
@@ -806,6 +855,43 @@ export async function deleteEmployee(
       transaction:
         Prisma.TransactionClient,
     ) => {
+      if (employee.userId) {
+        const fallbackUserId =
+          await resolveFallbackUserId(
+            transaction,
+            employee.userId,
+            deletedByUserId,
+          );
+
+        // Required Restrict FKs on User must be reassigned before delete.
+        await transaction.candidate.updateMany({
+          where: {
+            createdById: employee.userId,
+          },
+          data: {
+            createdById: fallbackUserId,
+          },
+        });
+
+        await transaction.jobOpening.updateMany({
+          where: {
+            createdById: employee.userId,
+          },
+          data: {
+            createdById: fallbackUserId,
+          },
+        });
+
+        await transaction.announcement.updateMany({
+          where: {
+            createdById: employee.userId,
+          },
+          data: {
+            createdById: fallbackUserId,
+          },
+        });
+      }
+
       await transaction.employee.delete({
         where: {
           id: employee.id,

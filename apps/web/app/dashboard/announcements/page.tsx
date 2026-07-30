@@ -514,32 +514,18 @@ export default function AnnouncementsPage() {
 
   return (
     <div className="space-y-8">
-      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">
-            Announcements
-          </h1>
-
-          <p className="mt-2 text-slate-600">
-            {canManage
-              ? "Create, publish, and manage company announcements."
-              : "Read the latest company news and important updates."}
-          </p>
-        </div>
-
-        {canManage ? (
+      {canManage ? (
+        <section className="flex justify-end">
           <button
             type="button"
-            onClick={
-              openCreateForm
-            }
+            onClick={openCreateForm}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
             <Plus size={18} />
             New Announcement
           </button>
-        ) : null}
-      </section>
+        </section>
+      ) : null}
 
       {error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

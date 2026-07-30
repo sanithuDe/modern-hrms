@@ -449,8 +449,10 @@ export async function deleteEmployeeController(
       return;
     }
 
-    const result =
-      await deleteEmployee(id);
+    const result = await deleteEmployee(
+      id,
+      request.user?.id,
+    );
 
     response.status(200).json({
       success: true,

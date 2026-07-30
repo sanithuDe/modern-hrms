@@ -36,6 +36,10 @@
   --shadow-card: 0 1px 2px rgb(15 28 30 / 4%),
     0 8px 24px rgb(15 28 30 / 5%);
   --shadow-elevated: 0 12px 40px rgb(12 74 78 / 12%);
+
+  /* Default UI density ~90% browser zoom; compensate height so no blank strip */
+  --ui-zoom: 0.9;
+  --ui-vh: calc(100vh / var(--ui-zoom));
 }
 
 @theme inline {
@@ -60,11 +64,26 @@
 
 html {
   scroll-behavior: smooth;
+  zoom: var(--ui-zoom);
+  min-height: 100%;
+  background: var(--canvas);
+}
+
+@supports not (zoom: 1) {
+  :root {
+    --ui-zoom: 1;
+    --ui-vh: 100vh;
+  }
+
+  html {
+    font-size: 90%;
+    zoom: normal;
+  }
 }
 
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: var(--ui-vh);
   background:
     radial-gradient(
       1200px 600px at 12% -10%,
@@ -83,6 +102,15 @@ body {
   font-feature-settings: "ss01" on, "cv11" on;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* With zoom, 100vh becomes visually shorter — stretch layout to fill viewport */
+.min-h-screen {
+  min-height: var(--ui-vh);
+}
+
+.h-screen {
+  height: var(--ui-vh);
 }
 
 ::selection {
