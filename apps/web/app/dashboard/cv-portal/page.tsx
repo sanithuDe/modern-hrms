@@ -29,6 +29,7 @@ import {
     type EmployeeCvSubmission,
 } from "../../../src/services/cv-portal.service";
 import { sanitizePhoneDigits } from "../../../src/lib/phone";
+import { SelectField } from "../../../src/components/ui/SelectField";
 
 interface StoredUser {
   id?: string;
@@ -574,27 +575,23 @@ export default function CvPortalPage() {
           >
             <div className="grid gap-5 lg:grid-cols-2">
               <div>
-                <label htmlFor="jobOpeningId" className={fieldLabel}>
-                  Job opening
-                </label>
-                <select
-                  id="jobOpeningId"
-                  name="jobOpeningId"
-                  value={form.jobOpeningId}
-                  onChange={handleInputChange}
-                  disabled={loading || submitting}
-                  className={fieldControl}
+                <SelectField
+                  label="Job opening"
                   required
-                >
-                  <option value="">Select a job</option>
-                  {jobs.map((job) => (
-                    <option key={job.id} value={job.id}>
-                      {job.title}
-                      {job.department ? ` — ${job.department.name}` : ""}
-                      {` (${job.numberOfVacancies} vacancy${job.numberOfVacancies === 1 ? "" : "s"})`}
-                    </option>
-                  ))}
-                </select>
+                  value={form.jobOpeningId}
+                  placeholder="Select a job"
+                  disabled={loading || submitting}
+                  onChange={(value) =>
+                    setForm((current) => ({
+                      ...current,
+                      jobOpeningId: value,
+                    }))
+                  }
+                  options={jobs.map((job) => ({
+                    value: job.id,
+                    label: `${job.title}${job.department ? ` — ${job.department.name}` : ""} (${job.numberOfVacancies} vacancy${job.numberOfVacancies === 1 ? "" : "s"})`,
+                  }))}
+                />
               </div>
 
               <div>

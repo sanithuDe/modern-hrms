@@ -10,7 +10,6 @@ import {
 import {
     useEffect,
     useState,
-    type ChangeEvent,
     type FormEvent,
 } from "react";
 
@@ -21,6 +20,8 @@ import {
     type UserRole,
 } from "../../../../../src/services/employee.service";
 import { sanitizePhoneDigits } from "../../../../../src/lib/phone";
+import { DateField } from "../../../../../src/components/ui/DateTimeFields";
+import { SelectField } from "../../../../../src/components/ui/SelectField";
 
 interface StoredUser {
   email: string;
@@ -175,12 +176,10 @@ export default function EditEmployeePage() {
     }));
   }
 
-  function handleRoleChange(
-    event: ChangeEvent<HTMLSelectElement>,
-  ) {
+  function handleRoleChange(value: string) {
     setForm((current) => ({
       ...current,
-      role: event.target.value as UserRole,
+      role: value as UserRole,
     }));
   }
 
@@ -370,28 +369,14 @@ export default function EditEmployeePage() {
                     />
                   </div>
 
-                  <div>
-                    <label
-                      htmlFor="hireDate"
-                      className="mb-2 block text-sm font-medium text-slate-700"
-                    >
-                      Hire date
-                    </label>
-
-                    <input
-                      id="hireDate"
-                      type="date"
-                      required
-                      value={form.hireDate}
-                      onChange={(event) =>
-                        updateTextField(
-                          "hireDate",
-                          event.target.value,
-                        )
-                      }
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-                    />
-                  </div>
+                  <DateField
+                    label="Hire date"
+                    required
+                    value={form.hireDate}
+                    onChange={(value) =>
+                      updateTextField("hireDate", value)
+                    }
+                  />
 
                   <div>
                     <label
@@ -442,35 +427,39 @@ export default function EditEmployeePage() {
                   </div>
 
                   <div>
-                    <label
-                      htmlFor="role"
-                      className="mb-2 block text-sm font-medium text-slate-700"
-                    >
-                      Role
-                    </label>
-
                     {user.role === "SUPER_ADMIN" ? (
-                      <select
-                        id="role"
+                      <SelectField
+                        label="Role"
                         value={form.role}
                         onChange={handleRoleChange}
                         disabled={form.role === "SUPER_ADMIN"}
-                        className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100"
-                      >
-                        <option value="EMPLOYEE">
-                          Employee
-                        </option>
-                        <option value="HR_MANAGER">
-                          HR Manager
-                        </option>
-                        {form.role === "SUPER_ADMIN" ? (
-                          <option value="SUPER_ADMIN">
-                            Super Admin
-                          </option>
-                        ) : null}
-                      </select>
+                        options={[
+                          {
+                            value: "EMPLOYEE",
+                            label: "Employee",
+                          },
+                          {
+                            value: "HR_MANAGER",
+                            label: "HR Manager",
+                          },
+                          ...(form.role === "SUPER_ADMIN"
+                            ? [
+                                {
+                                  value: "SUPER_ADMIN",
+                                  label: "Super Admin",
+                                },
+                              ]
+                            : []),
+                        ]}
+                      />
                     ) : (
                       <>
+                        <label
+                          htmlFor="role"
+                          className="mb-2 block text-sm font-medium text-slate-700"
+                        >
+                          Role
+                        </label>
                         <input
                           id="role"
                           type="text"

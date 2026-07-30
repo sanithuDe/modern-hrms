@@ -176,6 +176,8 @@ export interface CreateJobOpeningInput {
 
   departmentId?: string | null;
   positionId?: string | null;
+  departmentName?: string | null;
+  positionTitle?: string | null;
 }
 
 export type UpdateJobOpeningInput =

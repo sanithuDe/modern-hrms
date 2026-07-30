@@ -214,6 +214,125 @@ async function validateJobRelations(
   }
 }
 
+async function resolveDepartmentId(input: {
+  departmentId?: string | null;
+  departmentName?: string | null;
+}): Promise<string | null | undefined> {
+  if (
+    input.departmentName === undefined &&
+    input.departmentId === undefined
+  ) {
+    return undefined;
+  }
+
+  if (input.departmentName !== undefined) {
+    const name =
+      input.departmentName?.trim() || "";
+
+    if (!name) {
+      return null;
+    }
+
+    const existing =
+      await prisma.department.findFirst({
+        where: {
+          name: {
+            equals: name,
+            mode: "insensitive",
+          },
+        },
+        select: { id: true },
+      });
+
+    if (existing) {
+      return existing.id;
+    }
+
+    const created =
+      await prisma.department.create({
+        data: { name },
+        select: { id: true },
+      });
+
+    return created.id;
+  }
+
+  return cleanOptionalId(input.departmentId);
+}
+
+async function resolvePositionId(input: {
+  positionId?: string | null;
+  positionTitle?: string | null;
+  departmentId?: string | null;
+}): Promise<string | null | undefined> {
+  if (
+    input.positionTitle === undefined &&
+    input.positionId === undefined
+  ) {
+    return undefined;
+  }
+
+  if (input.positionTitle !== undefined) {
+    const title =
+      input.positionTitle?.trim() || "";
+
+    if (!title) {
+      return null;
+    }
+
+    const existing =
+      await prisma.position.findFirst({
+        where: {
+          title: {
+            equals: title,
+            mode: "insensitive",
+          },
+          ...(input.departmentId
+            ? {
+                OR: [
+                  {
+                    departmentId:
+                      input.departmentId,
+                  },
+                  { departmentId: null },
+                ],
+              }
+            : {}),
+        },
+        select: { id: true },
+        orderBy: {
+          departmentId: "desc",
+        },
+      });
+
+    if (existing) {
+      if (input.departmentId) {
+        await prisma.position.update({
+          where: { id: existing.id },
+          data: {
+            departmentId: input.departmentId,
+          },
+        });
+      }
+
+      return existing.id;
+    }
+
+    const created =
+      await prisma.position.create({
+        data: {
+          title,
+          departmentId: input.departmentId ?? null,
+        },
+        select: { id: true },
+      });
+
+    return created.id;
+  }
+
+  return cleanOptionalId(input.positionId);
+}
+
 export async function createJobOpening(
   input: CreateJobOpeningInput,
   createdById: string,
@@ -236,14 +355,17 @@ export async function createJobOpening(
   }
 
   const departmentId =
-    cleanOptionalId(
-      input.departmentId,
-    );
+    (await resolveDepartmentId({
+      departmentId: input.departmentId,
+      departmentName: input.departmentName,
+    })) ?? null;
 
   const positionId =
-    cleanOptionalId(
-      input.positionId,
-    );
+    (await resolvePositionId({
+      positionId: input.positionId,
+      positionTitle: input.positionTitle,
+      departmentId,
+    })) ?? null;
 
   await validateJobRelations(
     departmentId,
@@ -409,20 +531,27 @@ export async function updateJobOpening(
     );
   }
 
+  const resolvedDepartmentId =
+    await resolveDepartmentId({
+      departmentId: input.departmentId,
+      departmentName: input.departmentName,
+    });
+
   const departmentId =
-    input.departmentId !==
-    undefined
-      ? cleanOptionalId(
-          input.departmentId,
-        )
+    resolvedDepartmentId !== undefined
+      ? resolvedDepartmentId
       : existing.departmentId;
 
+  const resolvedPositionId =
+    await resolvePositionId({
+      positionId: input.positionId,
+      positionTitle: input.positionTitle,
+      departmentId,
+    });
+
   const positionId =
-    input.positionId !==
-    undefined
-      ? cleanOptionalId(
-          input.positionId,
-        )
+    resolvedPositionId !== undefined
+      ? resolvedPositionId
       : existing.positionId;
 
   await validateJobRelations(
@@ -548,12 +677,12 @@ export async function updateJobOpening(
           ),
       }),
 
-      ...(input.departmentId !==
+      ...(resolvedDepartmentId !==
         undefined && {
         departmentId,
       }),
 
-      ...(input.positionId !==
+      ...(resolvedPositionId !==
         undefined && {
         positionId,
       }),

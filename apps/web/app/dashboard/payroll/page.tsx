@@ -30,6 +30,8 @@ import {
   type Employee,
 } from "../../../src/services/employee.service";
 
+import { SelectField } from "../../../src/components/ui/SelectField";
+
 import {
   approvePayroll,
   createSalaryProfile,
@@ -1037,34 +1039,18 @@ export default function PayrollPage() {
                         <div className="grid gap-4 md:grid-cols-2">
                           {!editingProfile ? (
                             <div className="md:col-span-2">
-                              <label className="mb-2 block text-sm font-medium text-slate-700">
-                                Employee
-                              </label>
-                              <select
+                              <SelectField
+                                label="Employee"
                                 value={profileEmployeeId}
-                                onChange={(event) =>
-                                  setProfileEmployeeId(
-                                    event.target.value,
-                                  )
-                                }
-                                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
-                              >
-                                <option value="">
-                                  Select employee
-                                </option>
-                                {employeesWithoutProfile.map(
-                                  (employee) => (
-                                    <option
-                                      key={employee.id}
-                                      value={employee.id}
-                                    >
-                                      {employee.employeeNumber}{" "}
-                                      - {employee.firstName}{" "}
-                                      {employee.lastName}
-                                    </option>
-                                  ),
+                                placeholder="Select employee"
+                                onChange={setProfileEmployeeId}
+                                options={employeesWithoutProfile.map(
+                                  (employee) => ({
+                                    value: employee.id,
+                                    label: `${employee.employeeNumber} - ${employee.firstName} ${employee.lastName}`,
+                                  }),
                                 )}
-                              </select>
+                              />
                               {employeesWithoutProfile.length ===
                               0 ? (
                                 <p className="mt-2 text-xs text-amber-700">
@@ -1314,40 +1300,21 @@ export default function PayrollPage() {
                         </div>
                       ) : null}
 
-                      <label className="mb-2 mt-6 block text-sm font-medium text-slate-700">
-                        Employee
-                      </label>
-
-                      <select
-                        value={
-                          payrollEmployeeId
-                        }
-                        onChange={(event) =>
-                          setPayrollEmployeeId(
-                            event.target.value,
-                          )
-                        }
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
-                      >
-                        <option value="">
-                          Select an employee
-                        </option>
-
-                        {salaryProfiles.map(
-                          (profile) => (
-                            <option
-                              key={profile.id}
-                              value={
-                                profile.employeeId
-                              }
-                            >
-                              {profile.employee
-                                ? `${profile.employee.firstName} ${profile.employee.lastName}`
-                                : "Unknown employee"}
-                            </option>
-                          ),
+                      <SelectField
+                        label="Employee"
+                        className="mt-6"
+                        value={payrollEmployeeId}
+                        placeholder="Select an employee"
+                        onChange={setPayrollEmployeeId}
+                        options={salaryProfiles.map(
+                          (profile) => ({
+                            value: profile.employeeId,
+                            label: profile.employee
+                              ? `${profile.employee.firstName} ${profile.employee.lastName}`
+                              : "Unknown employee",
+                          }),
                         )}
-                      </select>
+                      />
 
                       {selectedSalaryProfile ? (
                         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -1391,40 +1358,20 @@ export default function PayrollPage() {
 
                       <div className="mt-5 grid grid-cols-2 gap-4">
                         <div>
-                          <label className="mb-2 block text-sm font-medium text-slate-700">
-                            Month
-                          </label>
-
-                          <select
-                            value={
-                              payrollMonth
+                          <SelectField
+                            label="Month"
+                            required
+                            value={String(payrollMonth)}
+                            onChange={(value) =>
+                              setPayrollMonth(value)
                             }
-                            onChange={(
-                              event,
-                            ) =>
-                              setPayrollMonth(
-                                event.target
-                                  .value,
-                              )
-                            }
-                            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
-                          >
-                            {monthNames.map(
-                              (
-                                month,
-                                index,
-                              ) => (
-                                <option
-                                  key={month}
-                                  value={
-                                    index + 1
-                                  }
-                                >
-                                  {month}
-                                </option>
-                              ),
+                            options={monthNames.map(
+                              (month, index) => ({
+                                value: String(index + 1),
+                                label: month,
+                              }),
                             )}
-                          </select>
+                          />
                         </div>
 
                         <div>

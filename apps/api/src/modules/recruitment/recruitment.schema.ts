@@ -169,6 +169,12 @@ const jobOpeningFieldsSchema =
 
     positionId:
       optionalIdSchema,
+
+    departmentName:
+      optionalStringSchema,
+
+    positionTitle:
+      optionalStringSchema,
   });
 
 function validateSalaryRange(

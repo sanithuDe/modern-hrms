@@ -126,6 +126,16 @@ function isCvPortalActive(pathname: string): boolean {
   );
 }
 
+function attendanceHref(role: string): string {
+  return normalizeRole(role) === "EMPLOYEE"
+    ? "/dashboard/attendance"
+    : "/dashboard/attendance/manage";
+}
+
+function isAttendanceActive(pathname: string): boolean {
+  return pathname.startsWith("/dashboard/attendance");
+}
+
 export default function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -164,11 +174,15 @@ export default function Sidebar({ role }: SidebarProps) {
           const href =
             item.label === "CV Portal"
               ? cvPortalHref(normalizedRole)
-              : item.href;
+              : item.label === "Attendance"
+                ? attendanceHref(normalizedRole)
+                : item.href;
           const active =
             item.label === "CV Portal"
               ? isCvPortalActive(pathname)
-              : isActivePath(pathname, href);
+              : item.label === "Attendance"
+                ? isAttendanceActive(pathname)
+                : isActivePath(pathname, href);
 
           return (
             <Link

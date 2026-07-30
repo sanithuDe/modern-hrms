@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   type Attendance,
-  type AttendanceFilters,
+  getAllAttendance,
   getMyAttendance,
 } from "@/src/services/attendance.service";
+import { DateField } from "@/src/components/ui/DateTimeFields";
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString([], {
@@ -37,25 +39,21 @@ function formatMinutes(minutes: number): string {
 function getStatusClasses(status: string): string {
   switch (status) {
     case "PRESENT":
-      return "bg-green-100 text-green-700";
-
+      return "bg-emerald-100 text-emerald-700";
     case "LATE":
-      return "bg-yellow-100 text-yellow-700";
-
+    case "GRACE_LATE":
+      return "bg-amber-100 text-amber-700";
     case "HALF_DAY":
       return "bg-orange-100 text-orange-700";
-
     case "ABSENT":
-      return "bg-red-100 text-red-700";
-
+      return "bg-rose-100 text-rose-700";
     case "ON_LEAVE":
-      return "bg-blue-100 text-blue-700";
-
+    case "FULL_DAY_LEAVE":
+      return "bg-sky-100 text-sky-700";
     case "HOLIDAY":
-      return "bg-purple-100 text-purple-700";
-
+      return "bg-slate-100 text-slate-700";
     default:
-      return "bg-gray-100 text-gray-700";
+      return "bg-slate-100 text-slate-700";
   }
 }
 
@@ -82,13 +80,16 @@ function getErrorMessage(error: unknown): string {
   return "Unable to load attendance";
 }
 
-export default function MyAttendancePage() {
-  const [records, setRecords] = useState<Attendance[]>(
-    [],
-  );
+export default function ManageAttendancePage() {
+  const router = useRouter();
 
+  const [canManage, setCanManage] = useState(false);
+  const [roleReady, setRoleReady] = useState(false);
+
+  const [records, setRecords] = useState<Attendance[]>([]);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [search, setSearch] = useState("");
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -97,33 +98,50 @@ export default function MyAttendancePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function loadRecords(
-    requestedPage = page,
-  ): Promise<void> {
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem("authUser");
+      if (!stored) {
+        router.replace("/login");
+        return;
+      }
+
+      const parsed = JSON.parse(stored) as { role?: string };
+      const manage =
+        parsed.role === "SUPER_ADMIN" ||
+        parsed.role === "HR_MANAGER";
+
+      setCanManage(manage);
+      setRoleReady(true);
+
+      if (!manage) {
+        router.replace("/dashboard/attendance");
+      }
+    } catch {
+      router.replace("/login");
+    }
+  }, [router]);
+
+  async function loadRecords(requestedPage = page): Promise<void> {
     try {
       setLoading(true);
       setError("");
 
-      const filters: AttendanceFilters = {
+      const filters = {
         page: requestedPage,
-        limit: 10,
+        limit: 15,
+        ...(startDate ? { startDate } : {}),
+        ...(endDate ? { endDate } : {}),
+        ...(search.trim() ? { search: search.trim() } : {}),
       };
 
-      if (startDate) {
-        filters.startDate = startDate;
-      }
-
-      if (endDate) {
-        filters.endDate = endDate;
-      }
-
-      const response = await getMyAttendance(filters);
+      const response = canManage
+        ? await getAllAttendance(filters)
+        : await getMyAttendance(filters);
 
       setRecords(response.records);
       setPage(response.pagination.page);
-      setTotalPages(
-        Math.max(1, response.pagination.totalPages),
-      );
+      setTotalPages(Math.max(1, response.pagination.totalPages));
       setTotal(response.pagination.total);
     } catch (loadError) {
       setError(getErrorMessage(loadError));
@@ -133,9 +151,13 @@ export default function MyAttendancePage() {
   }
 
   useEffect(() => {
+    if (!roleReady || !canManage) {
+      return;
+    }
+
     void loadRecords(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [roleReady, canManage]);
 
   function handleFilterSubmit(
     event: React.FormEvent<HTMLFormElement>,
@@ -148,6 +170,7 @@ export default function MyAttendancePage() {
   function clearFilters() {
     setStartDate("");
     setEndDate("");
+    setSearch("");
     setPage(1);
 
     window.setTimeout(() => {
@@ -155,55 +178,63 @@ export default function MyAttendancePage() {
     }, 0);
   }
 
+  if (!roleReady) {
+    return (
+      <div className="flex min-h-[320px] items-center justify-center text-sm text-slate-500">
+        Loading...
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      <div>
+        <h1
+          className="text-2xl font-semibold text-slate-900"
+          style={{ fontFamily: "var(--font-source-serif), Georgia, serif" }}
+        >
+          Manage Attendance
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          View and filter attendance for all employees.
+        </p>
+      </div>
+
       <form
         onSubmit={handleFilterSubmit}
-        className="rounded-xl border bg-white p-5 shadow-sm"
+        className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
       >
-        <div className="grid gap-4 md:grid-cols-4">
-          <div>
-            <label
-              htmlFor="startDate"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Start date
-            </label>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <DateField
+            label="Start date"
+            value={startDate}
+            onChange={setStartDate}
+          />
 
-            <input
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(event) =>
-                setStartDate(event.target.value)
-              }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500"
-            />
-          </div>
+          <DateField
+            label="End date"
+            value={endDate}
+            minDate={startDate || undefined}
+            onChange={setEndDate}
+          />
 
           <div>
-            <label
-              htmlFor="endDate"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              End date
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Search employee
             </label>
-
             <input
-              id="endDate"
-              type="date"
-              value={endDate}
-              onChange={(event) =>
-                setEndDate(event.target.value)
-              }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500"
+              type="text"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Name or employee no."
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
             />
           </div>
 
           <div className="flex items-end">
             <button
               type="submit"
-              className="w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+              className="w-full rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-semibold text-white hover:bg-[var(--brand-dark)]"
             >
               Apply Filters
             </button>
@@ -213,7 +244,7 @@ export default function MyAttendancePage() {
             <button
               type="button"
               onClick={clearFilters}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               Clear
             </button>
@@ -222,62 +253,56 @@ export default function MyAttendancePage() {
       </form>
 
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b px-5 py-4">
-          <h2 className="font-semibold text-gray-900">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <h2 className="font-semibold text-slate-900">
             Attendance records
           </h2>
-
-          <span className="text-sm text-gray-500">
-            {total} records
-          </span>
+          <span className="text-sm text-slate-500">{total} records</span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-slate-100">
+            <thead className="bg-slate-50">
               <tr>
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Employee
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Date
                 </th>
-
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Check-in
                 </th>
-
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Check-out
                 </th>
-
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Status
                 </th>
-
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Working hours
                 </th>
-
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Overtime
                 </th>
-
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Method
                 </th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr>
                   <td
-                    colSpan={7}
-                    className="px-5 py-10 text-center text-sm text-gray-500"
+                    colSpan={8}
+                    className="px-5 py-10 text-center text-sm text-slate-500"
                   >
                     Loading attendance...
                   </td>
@@ -285,30 +310,34 @@ export default function MyAttendancePage() {
               ) : records.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
-                    className="px-5 py-10 text-center text-sm text-gray-500"
+                    colSpan={8}
+                    className="px-5 py-10 text-center text-sm text-slate-500"
                   >
                     No attendance records found.
                   </td>
                 </tr>
               ) : (
                 records.map((record) => (
-                  <tr
-                    key={record.id}
-                    className="hover:bg-gray-50"
-                  >
-                    <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-900">
+                  <tr key={record.id} className="hover:bg-slate-50">
+                    <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-900">
+                      <div className="font-medium">
+                        {record.employee
+                          ? `${record.employee.firstName} ${record.employee.lastName}`
+                          : "—"}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {record.employee?.employeeNumber ?? ""}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-700">
                       {formatDate(record.date)}
                     </td>
-
-                    <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-700">
+                    <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-700">
                       {formatTime(record.checkIn)}
                     </td>
-
-                    <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-700">
+                    <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-700">
                       {formatTime(record.checkOut)}
                     </td>
-
                     <td className="whitespace-nowrap px-5 py-4">
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClasses(
@@ -318,20 +347,13 @@ export default function MyAttendancePage() {
                         {record.status.replaceAll("_", " ")}
                       </span>
                     </td>
-
-                    <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-700">
-                      {formatMinutes(
-                        record.workingMinutes,
-                      )}
+                    <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-700">
+                      {formatMinutes(record.workingMinutes)}
                     </td>
-
-                    <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-700">
-                      {formatMinutes(
-                        record.overtimeMinutes,
-                      )}
+                    <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-700">
+                      {formatMinutes(record.overtimeMinutes)}
                     </td>
-
-                    <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-700">
+                    <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-700">
                       {record.method}
                     </td>
                   </tr>
@@ -341,17 +363,17 @@ export default function MyAttendancePage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between border-t px-5 py-4">
+        <div className="flex items-center justify-between border-t border-slate-100 px-5 py-4">
           <button
             type="button"
             disabled={page <= 1 || loading}
             onClick={() => void loadRecords(page - 1)}
-            className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Previous
           </button>
 
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-slate-500">
             Page {page} of {totalPages}
           </span>
 
@@ -359,7 +381,7 @@ export default function MyAttendancePage() {
             type="button"
             disabled={page >= totalPages || loading}
             onClick={() => void loadRecords(page + 1)}
-            className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Next
           </button>

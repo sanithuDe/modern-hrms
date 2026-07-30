@@ -9,6 +9,8 @@ import {
     useState,
 } from "react";
 
+import { useRouter } from "next/navigation";
+
 import {
     type Attendance,
     checkIn,
@@ -297,6 +299,8 @@ function RefreshIcon() {
 }
 
 export default function AttendancePage() {
+  const router = useRouter();
+
   const [userRole, setUserRole] = useState<
     "SUPER_ADMIN" | "HR_MANAGER" | "EMPLOYEE" | null
   >(null);
@@ -308,8 +312,7 @@ export default function AttendancePage() {
     userRole === "HR_MANAGER";
 
   const canSelfPunch =
-    userRole === "EMPLOYEE" ||
-    userRole === "SUPER_ADMIN";
+    userRole === "EMPLOYEE";
 
   const canViewAllEmployees =
     isSuperAdmin || isHrManager;
@@ -476,14 +479,26 @@ export default function AttendancePage() {
     );
 
   useEffect(() => {
-    if (!userRole) {
+    if (
+      userRole === "SUPER_ADMIN" ||
+      userRole === "HR_MANAGER"
+    ) {
+      router.replace("/dashboard/attendance/manage");
+      return;
+    }
+
+    if (userRole !== "EMPLOYEE") {
       return;
     }
 
     void loadAttendance();
-  }, [loadAttendance, userRole]);
+  }, [loadAttendance, userRole, router]);
 
   useEffect(() => {
+    if (userRole !== "EMPLOYEE") {
+      return;
+    }
+
     setCurrentTime(new Date());
 
     const timer =
@@ -494,7 +509,7 @@ export default function AttendancePage() {
     return () => {
       window.clearInterval(timer);
     };
-  }, []);
+  }, [userRole]);
 
   const filteredHistory = useMemo(() => {
     const keyword = historySearch.trim().toLowerCase();
@@ -532,6 +547,8 @@ export default function AttendancePage() {
     Boolean(attendance?.checkOut);
 
   const isShiftOver = useMemo(() => {
+    // Office-hours attendance does not hard-block punch when shift ends.
+    // Keep helper for optional display only.
     if (!activeShift || !currentTime) {
       return false;
     }
@@ -564,10 +581,9 @@ export default function AttendancePage() {
     return currentMinutes >= endMinutes;
   }, [activeShift, attendance, currentTime]);
 
+  // API uses global office settings — do not require an assigned shift.
   const canCheckIn =
-    Boolean(activeShift) &&
     !hasCheckedIn &&
-    !isShiftOver &&
     actionLoading === null;
 
   const canCheckOut =
@@ -651,18 +667,22 @@ export default function AttendancePage() {
       ? formatTime(
           attendance.scheduledStart,
         )
-      : formatShiftTime(
-          activeShift?.startTimeMinutes,
-        );
+      : activeShift
+        ? formatShiftTime(
+            activeShift.startTimeMinutes,
+          )
+        : "Office settings";
 
   const shiftEndTime =
     attendance?.scheduledEnd
       ? formatTime(
           attendance.scheduledEnd,
         )
-      : formatShiftTime(
-          activeShift?.endTimeMinutes,
-        );
+      : activeShift
+        ? formatShiftTime(
+            activeShift.endTimeMinutes,
+          )
+        : "Office settings";
 
   async function handleCheckIn(): Promise<void> {
     if (!canCheckIn) {
@@ -682,6 +702,16 @@ export default function AttendancePage() {
       setMessage(
         "You checked in successfully.",
       );
+
+      // Refresh history so managers see today's row immediately.
+      try {
+        const history = canViewAllEmployees
+          ? await getAllAttendance({ limit: 80 })
+          : await getMyAttendance({ limit: 40 });
+        setHistoryRecords(history.records);
+      } catch {
+        // Keep punch success even if history refresh fails.
+      }
     } catch (requestError) {
       setError(
         getErrorMessage(
@@ -711,6 +741,15 @@ export default function AttendancePage() {
       setMessage(
         "You checked out successfully.",
       );
+
+      try {
+        const history = canViewAllEmployees
+          ? await getAllAttendance({ limit: 80 })
+          : await getMyAttendance({ limit: 40 });
+        setHistoryRecords(history.records);
+      } catch {
+        // Keep punch success even if history refresh fails.
+      }
     } catch (requestError) {
       setError(
         getErrorMessage(
@@ -723,6 +762,9 @@ export default function AttendancePage() {
   }
 
   if (
+    !userRole ||
+    userRole === "SUPER_ADMIN" ||
+    userRole === "HR_MANAGER" ||
     loading ||
     !currentTime
   ) {
@@ -732,7 +774,10 @@ export default function AttendancePage() {
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-900" />
 
           <p className="mt-4 text-sm text-slate-500">
-            Loading attendance...
+            {userRole === "SUPER_ADMIN" ||
+            userRole === "HR_MANAGER"
+              ? "Opening employee attendance..."
+              : "Loading attendance..."}
           </p>
         </div>
       </div>
@@ -754,27 +799,15 @@ export default function AttendancePage() {
       ) : null}
 
       {canSelfPunch && !activeShift ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
-          No active shift has been assigned.
-          Please contact your HR Manager.
-        </div>
-      ) : null}
-
-      {canSelfPunch && activeShift && isShiftOver && !hasCheckedIn ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          Your shift has ended. You can no longer check in for today.
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          No personal shift is assigned. Check-in uses company office hours
+          from attendance settings.
         </div>
       ) : null}
 
       {canSelfPunch && activeShift && isShiftOver && hasCheckedIn && hasCheckedOut ? (
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
           Your shift is complete for today. Check-in and check-out have been recorded.
-        </div>
-      ) : null}
-
-      {isHrManager ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          View employee check-in and check-out history below. HR Managers cannot add or modify attendance records.
         </div>
       ) : null}
 
@@ -840,12 +873,12 @@ export default function AttendancePage() {
 
           <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Assigned Shift
+              Schedule
             </p>
 
             <p className="mt-2 text-lg font-bold text-slate-950">
               {activeShift?.name ??
-                "No shift assigned"}
+                "Company office hours"}
             </p>
 
             <div className="mt-3 space-y-1 text-sm text-slate-600">
@@ -867,8 +900,11 @@ export default function AttendancePage() {
                 Grace:{" "}
                 <span className="font-semibold text-slate-900">
                   {activeShift?.graceMinutes ??
-                    0}{" "}
-                  minutes
+                    "Settings"}{" "}
+                  {typeof activeShift?.graceMinutes ===
+                  "number"
+                    ? "minutes"
+                    : "(office settings)"}
                 </span>
               </p>
 
@@ -901,14 +937,11 @@ export default function AttendancePage() {
             >
               <LoginIcon />
 
-              {actionLoading ===
-              "check-in"
+              {actionLoading === "check-in"
                 ? "Checking in..."
-                : isShiftOver
-                  ? "Shift Ended"
-                  : hasCheckedIn
-                    ? "Already Checked In"
-                    : "Check In"}
+                : hasCheckedIn
+                  ? "Already Checked In"
+                  : "Check In"}
             </button>
 
             <button
@@ -921,10 +954,11 @@ export default function AttendancePage() {
             >
               <LogoutIcon />
 
-              {actionLoading ===
-              "check-out"
+              {actionLoading === "check-out"
                 ? "Checking out..."
-                : "Check Out"}
+                : hasCheckedOut
+                  ? "Already Checked Out"
+                  : "Check Out"}
             </button>
 
             <button
@@ -1023,8 +1057,8 @@ export default function AttendancePage() {
                   </h3>
 
                   <p className="mt-1 text-xs text-slate-500">
-                    Based on your assigned
-                    shift
+                    Based on company office hours
+                    (8h default if no shift)
                   </p>
                 </div>
 

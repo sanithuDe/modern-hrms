@@ -236,7 +236,6 @@ const lastUsers = await prisma.user.findMany({
 // Returns last 10 users
 ```
 
-## cursor
 
 Cursor-based pagination:
 
@@ -247,10 +246,9 @@ const firstPage = await prisma.user.findMany({
   orderBy: { id: 'asc' }
 })
 
-// Next page using cursor
 const nextPage = await prisma.user.findMany({
   take: 10,
-  skip: 1,  // Skip the cursor record
+  skip: 1,  
   cursor: { id: firstPage[firstPage.length - 1].id },
   orderBy: { id: 'asc' }
 })
