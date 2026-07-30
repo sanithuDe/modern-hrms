@@ -68,11 +68,11 @@ const initialForm: PerformanceForm = {
 
   period: "MONTHLY",
 
-  productivityScore: 50,
-  qualityScore: 50,
-  teamworkScore: 50,
-  attendanceScore: 50,
-  communicationScore: 50,
+  productivityScore: 60,
+  qualityScore: 60,
+  teamworkScore: 60,
+  attendanceScore: 60,
+  communicationScore: 60,
 
   strengths: "",
   improvements: "",
@@ -114,20 +114,104 @@ function getErrorMessage(
 
 function getScoreLabel(
   score: number,
+  hasReviews = true,
 ): string {
-  if (score >= 85) {
-    return "Excellent";
+  if (!hasReviews) {
+    return "No data";
   }
 
-  if (score >= 70) {
+  const value = Number(score);
+
+  if (value >= 75) {
     return "Good";
   }
 
-  if (score >= 50) {
+  if (value >= 50) {
     return "Average";
   }
 
-  return "Needs Improvement";
+  if (value >= 25) {
+    return "Low";
+  }
+
+  return "Bad";
+}
+
+const PERFORMANCE_RATING_OPTIONS = [
+  { label: "Bad", value: 15 },
+  { label: "Low", value: 35 },
+  { label: "Average", value: 60 },
+  { label: "Good", value: 85 },
+] as const;
+
+function getScoreToneClass(
+  score: number,
+): string {
+  const label = getScoreLabel(score);
+
+  switch (label) {
+    case "Good":
+      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    case "Average":
+      return "bg-amber-50 text-amber-700 border-amber-200";
+    case "Low":
+      return "bg-orange-50 text-orange-700 border-orange-200";
+    default:
+      return "bg-red-50 text-red-700 border-red-200";
+  }
+}
+
+function nearestRatingScore(score: number): number {
+  let best: number = PERFORMANCE_RATING_OPTIONS[0].value;
+  let bestDistance = Math.abs(Number(score) - best);
+
+  for (const option of PERFORMANCE_RATING_OPTIONS) {
+    const distance = Math.abs(Number(score) - option.value);
+    if (distance < bestDistance) {
+      best = option.value;
+      bestDistance = distance;
+    }
+  }
+
+  return best;
+}
+
+function ScoreRatingSelect({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-slate-700">
+        {label}
+      </label>
+
+      <select
+        value={nearestRatingScore(value)}
+        onChange={(event) =>
+          onChange(Number(event.target.value))
+        }
+        required
+        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
+      >
+        {PERFORMANCE_RATING_OPTIONS.map(
+          (option) => (
+            <option
+              key={option.label}
+              value={option.value}
+            >
+              {option.label}
+            </option>
+          ),
+        )}
+      </select>
+    </div>
+  );
 }
 
 function formatPeriod(
@@ -642,7 +726,10 @@ export default function PerformancePage() {
           </p>
 
           <p className="mt-2 text-3xl font-bold text-slate-900">
-            {averageScore}%
+            {getScoreLabel(averageScore, reviews.length > 0)}
+            <span className="ml-2 text-base font-medium text-slate-500">
+              {reviews.length > 0 ? `(${averageScore}%)` : ""}
+            </span>
           </p>
         </article>
 
@@ -699,7 +786,7 @@ export default function PerformancePage() {
                   </span>
 
                   <span className="text-sm font-semibold text-slate-900">
-                    {category.value}%
+                    {getScoreLabel(category.value, reviews.length > 0)}
                   </span>
                 </div>
 
@@ -832,14 +919,13 @@ export default function PerformancePage() {
                         </td>
 
                         <td className="px-6 py-5">
-                          <p className="font-semibold text-slate-900">
-                            {score}%
-                          </p>
-
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getScoreToneClass(score)}`}
+                          >
+                            {getScoreLabel(score)}
+                          </span>
                           <p className="mt-1 text-xs text-slate-500">
-                            {getScoreLabel(
-                              score,
-                            )}
+                            Overall {score}%
                           </p>
                         </td>
 
@@ -1071,137 +1157,50 @@ export default function PerformancePage() {
                 <h3 className="font-semibold text-slate-900">
                   Performance Scores
                 </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Choose Bad, Low, Average, or Good for each area.
+                </p>
 
                 <div className="mt-4 grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">
-                      Productivity
-                    </label>
+                  <ScoreRatingSelect
+                    label="Productivity"
+                    value={form.productivityScore}
+                    onChange={(value) =>
+                      updateForm("productivityScore", value)
+                    }
+                  />
 
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={
-                        form.productivityScore
-                      }
-                      onChange={(event) =>
-                        updateForm(
-                          "productivityScore",
-                          Number(
-                            event.target
-                              .value,
-                          ),
-                        )
-                      }
-                      required
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-                    />
-                  </div>
+                  <ScoreRatingSelect
+                    label="Work Quality"
+                    value={form.qualityScore}
+                    onChange={(value) =>
+                      updateForm("qualityScore", value)
+                    }
+                  />
 
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">
-                      Work Quality
-                    </label>
+                  <ScoreRatingSelect
+                    label="Teamwork"
+                    value={form.teamworkScore}
+                    onChange={(value) =>
+                      updateForm("teamworkScore", value)
+                    }
+                  />
 
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={
-                        form.qualityScore
-                      }
-                      onChange={(event) =>
-                        updateForm(
-                          "qualityScore",
-                          Number(
-                            event.target
-                              .value,
-                          ),
-                        )
-                      }
-                      required
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-                    />
-                  </div>
+                  <ScoreRatingSelect
+                    label="Attendance"
+                    value={form.attendanceScore}
+                    onChange={(value) =>
+                      updateForm("attendanceScore", value)
+                    }
+                  />
 
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">
-                      Teamwork
-                    </label>
-
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={
-                        form.teamworkScore
-                      }
-                      onChange={(event) =>
-                        updateForm(
-                          "teamworkScore",
-                          Number(
-                            event.target
-                              .value,
-                          ),
-                        )
-                      }
-                      required
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">
-                      Attendance
-                    </label>
-
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={
-                        form.attendanceScore
-                      }
-                      onChange={(event) =>
-                        updateForm(
-                          "attendanceScore",
-                          Number(
-                            event.target
-                              .value,
-                          ),
-                        )
-                      }
-                      required
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">
-                      Communication
-                    </label>
-
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={
-                        form.communicationScore
-                      }
-                      onChange={(event) =>
-                        updateForm(
-                          "communicationScore",
-                          Number(
-                            event.target
-                              .value,
-                          ),
-                        )
-                      }
-                      required
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-                    />
-                  </div>
+                  <ScoreRatingSelect
+                    label="Communication"
+                    value={form.communicationScore}
+                    onChange={(value) =>
+                      updateForm("communicationScore", value)
+                    }
+                  />
                 </div>
               </div>
 

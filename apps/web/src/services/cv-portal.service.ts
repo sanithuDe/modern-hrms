@@ -321,6 +321,8 @@ export interface CreateMyCvSubmissionInput {
   jobOpeningId: string;
   yearsOfExperience: number;
   currentJobTitle?: string;
+  candidateName?: string;
+  /** @deprecated Prefer candidateName */
   currentCompany?: string;
   phone?: string;
   linkedInUrl?: string;
@@ -366,10 +368,14 @@ export async function createMyCvSubmission(
     );
   }
 
-  if (input.currentCompany) {
+  const candidateName =
+    input.candidateName?.trim() ||
+    input.currentCompany?.trim();
+
+  if (candidateName) {
     formData.append(
-      "currentCompany",
-      input.currentCompany,
+      "candidateName",
+      candidateName,
     );
   }
 

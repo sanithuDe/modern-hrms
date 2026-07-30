@@ -1,8 +1,8 @@
 "use client";
 
 import axios from "axios";
+
 import {
-  BadgeDollarSign,
   Banknote,
   Check,
   CheckCircle2,
@@ -14,16 +14,16 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
+
 import { useRouter } from "next/navigation";
+
 import {
   useEffect,
   useMemo,
   useState,
-  type FormEvent,
 } from "react";
 
-
-import Sidebar from "../../../src/components/layout/sidebar";
+// Sidebar is provided by the shared Shell layout
 
 import {
   getEmployees,
@@ -34,6 +34,7 @@ import {
   approvePayroll,
   createSalaryProfile,
   generatePayroll,
+  getMyPayrolls,
   getPayrolls,
   getSalaryProfiles,
   markPayrollPaid,
@@ -44,7 +45,10 @@ import {
 
 interface StoredUser {
   email: string;
-  role: string;
+  role:
+    | "SUPER_ADMIN"
+    | "HR_MANAGER"
+    | "EMPLOYEE";
 }
 
 type PayrollTab =
@@ -72,18 +76,25 @@ function getRequestErrorMessage(
   fallbackMessage: string,
 ): string {
   if (axios.isAxiosError(requestError)) {
-    const responseData = requestError.response?.data as
-      | {
-          message?: unknown;
-          error?: unknown;
-        }
-      | undefined;
+    const responseData =
+      requestError.response?.data as
+        | {
+            message?: unknown;
+            error?: unknown;
+          }
+        | undefined;
 
-    if (typeof responseData?.message === "string") {
+    if (
+      typeof responseData?.message ===
+      "string"
+    ) {
       return responseData.message;
     }
 
-    if (typeof responseData?.error === "string") {
+    if (
+      typeof responseData?.error ===
+      "string"
+    ) {
       return responseData.error;
     }
   }
@@ -95,7 +106,9 @@ function getRequestErrorMessage(
   return fallbackMessage;
 }
 
-function toNumber(value: string | number): number {
+function toNumber(
+  value: string | number,
+): number {
   const numberValue = Number(value);
 
   return Number.isFinite(numberValue)
@@ -113,50 +126,13 @@ function formatMoney(
 }
 
 function getEmployeeName(
-  employee: Pick<
-    Employee,
-    "firstName" | "lastName"
-  >,
+  employee: Payroll["employee"],
 ): string {
+  if (!employee) {
+    return "Unknown employee";
+  }
+
   return `${employee.firstName} ${employee.lastName}`;
-}
-
-function getProfileEmployeeName(
-  profile: SalaryProfile,
-): string {
-  if (!profile.employee) {
-    return "Unknown employee";
-  }
-
-  return `${profile.employee.firstName} ${profile.employee.lastName}`;
-}
-
-function getProfileEmployeeNumber(
-  profile: SalaryProfile,
-): string {
-  return (
-    profile.employee?.employeeNumber ??
-    "—"
-  );
-}
-
-function getPayrollEmployeeName(
-  payroll: Payroll,
-): string {
-  if (!payroll.employee) {
-    return "Unknown employee";
-  }
-
-  return `${payroll.employee.firstName} ${payroll.employee.lastName}`;
-}
-
-function getPayrollEmployeeNumber(
-  payroll: Payroll,
-): string {
-  return (
-    payroll.employee?.employeeNumber ??
-    "—"
-  );
 }
 
 function getStatusClass(
@@ -195,9 +171,7 @@ export default function PayrollPage() {
     useState<Payroll[]>([]);
 
   const [activeTab, setActiveTab] =
-    useState<PayrollTab>(
-      "salary-profiles",
-    );
+    useState<PayrollTab>("history");
 
   const [search, setSearch] =
     useState("");
@@ -210,56 +184,6 @@ export default function PayrollPage() {
 
   const [isLoading, setIsLoading] =
     useState(true);
-
-  const [
-    salaryEmployeeId,
-    setSalaryEmployeeId,
-  ] = useState("");
-
-  const [basicSalary, setBasicSalary] =
-    useState("");
-
-  const [
-    fixedAllowance,
-    setFixedAllowance,
-  ] = useState("0");
-
-  const [
-    fixedDeduction,
-    setFixedDeduction,
-  ] = useState("0");
-
-  const [
-    isCreatingProfile,
-    setIsCreatingProfile,
-  ] = useState(false);
-
-  const [
-    editingProfile,
-    setEditingProfile,
-  ] = useState<SalaryProfile | null>(
-    null,
-  );
-
-  const [
-    editBasicSalary,
-    setEditBasicSalary,
-  ] = useState("");
-
-  const [
-    editFixedAllowance,
-    setEditFixedAllowance,
-  ] = useState("");
-
-  const [
-    editFixedDeduction,
-    setEditFixedDeduction,
-  ] = useState("");
-
-  const [
-    isUpdatingProfile,
-    setIsUpdatingProfile,
-  ] = useState(false);
 
   const [
     payrollEmployeeId,
@@ -296,12 +220,48 @@ export default function PayrollPage() {
   const [processingId, setProcessingId] =
     useState<string | null>(null);
 
+  const [showProfileForm, setShowProfileForm] =
+    useState(false);
+
+  const [editingProfile, setEditingProfile] =
+    useState<SalaryProfile | null>(null);
+
+  const [profileEmployeeId, setProfileEmployeeId] =
+    useState("");
+
+  const [profileBasicSalary, setProfileBasicSalary] =
+    useState("");
+
+  const [
+    profileFixedAllowance,
+    setProfileFixedAllowance,
+  ] = useState("0");
+
+  const [
+    profileFixedDeduction,
+    setProfileFixedDeduction,
+  ] = useState("0");
+
+  const [
+    isSavingProfile,
+    setIsSavingProfile,
+  ] = useState(false);
+
+  const isEmployee =
+    user?.role === "EMPLOYEE";
+
   const isSuperAdmin =
     user?.role === "SUPER_ADMIN";
 
+  const canGeneratePayroll =
+    user?.role === "SUPER_ADMIN" ||
+    user?.role === "HR_MANAGER";
+
   useEffect(() => {
     const accessToken =
-      localStorage.getItem("accessToken");
+      localStorage.getItem(
+        "accessToken",
+      );
 
     const storedUser =
       localStorage.getItem("authUser");
@@ -317,18 +277,34 @@ export default function PayrollPage() {
           storedUser,
         ) as StoredUser;
 
+      const allowedRoles = [
+        "SUPER_ADMIN",
+        "HR_MANAGER",
+        "EMPLOYEE",
+      ];
+
       if (
-        parsedUser.role !==
-          "SUPER_ADMIN" &&
-        parsedUser.role !== "HR_MANAGER"
+        !allowedRoles.includes(
+          parsedUser.role,
+        )
       ) {
-        router.replace("/dashboard");
+        router.replace("/login");
         return;
       }
 
       setUser(parsedUser);
 
-      void loadPayrollData();
+      if (
+        parsedUser.role === "EMPLOYEE"
+      ) {
+        setActiveTab("history");
+      } else {
+        setActiveTab("salary-profiles");
+      }
+
+      void loadPayrollData(
+        parsedUser.role,
+      );
     } catch {
       localStorage.removeItem(
         "accessToken",
@@ -342,10 +318,28 @@ export default function PayrollPage() {
     }
   }, [router]);
 
-  async function loadPayrollData() {
+  async function loadPayrollData(
+    role: StoredUser["role"],
+  ) {
     try {
       setIsLoading(true);
       setError("");
+
+      if (role === "EMPLOYEE") {
+        const payrollData =
+          await getMyPayrolls();
+
+        setEmployees([]);
+        setSalaryProfiles([]);
+
+        setPayrolls(
+          Array.isArray(payrollData)
+            ? payrollData
+            : [],
+        );
+
+        return;
+      }
 
       const [
         employeeData,
@@ -388,24 +382,6 @@ export default function PayrollPage() {
     }
   }
 
-  const employeesWithoutProfile =
-    useMemo(() => {
-      const profileEmployeeIds =
-        new Set(
-          salaryProfiles.map(
-            (profile) =>
-              profile.employeeId,
-          ),
-        );
-
-      return employees.filter(
-        (employee) =>
-          !profileEmployeeIds.has(
-            employee.id,
-          ),
-      );
-    }, [employees, salaryProfiles]);
-
   const filteredSalaryProfiles =
     useMemo(() => {
       const keyword =
@@ -418,14 +394,14 @@ export default function PayrollPage() {
       return salaryProfiles.filter(
         (profile) => {
           const employeeName =
-            getProfileEmployeeName(
-              profile,
-            ).toLowerCase();
+            profile.employee
+              ? `${profile.employee.firstName} ${profile.employee.lastName}`.toLowerCase()
+              : "";
 
           const employeeNumber =
-            getProfileEmployeeNumber(
-              profile,
-            ).toLowerCase();
+            profile.employee
+              ?.employeeNumber
+              .toLowerCase() ?? "";
 
           return (
             employeeName.includes(keyword) ||
@@ -447,16 +423,16 @@ export default function PayrollPage() {
       return payrolls.filter(
         (payroll) => {
           const employeeName =
-            getPayrollEmployeeName(
-              payroll,
+            getEmployeeName(
+              payroll.employee,
             ).toLowerCase();
 
           const employeeNumber =
-            getPayrollEmployeeNumber(
-              payroll,
-            ).toLowerCase();
+            payroll.employee
+              ?.employeeNumber
+              .toLowerCase() ?? "";
 
-          const month =
+          const monthName =
             monthNames[
               payroll.month - 1
             ]?.toLowerCase() ?? "";
@@ -469,7 +445,7 @@ export default function PayrollPage() {
             payroll.status
               .toLowerCase()
               .includes(keyword) ||
-            month.includes(keyword) ||
+            monthName.includes(keyword) ||
             String(payroll.year).includes(
               keyword,
             )
@@ -495,39 +471,56 @@ export default function PayrollPage() {
       if (!selectedSalaryProfile) {
         return {
           basicSalary: 0,
-          allowance: 0,
-          deduction: 0,
+          fixedAllowance: 0,
+          additionalAllowance: 0,
+          allowances: 0,
+          fixedDeduction: 0,
+          additionalDeduction: 0,
+          deductions: 0,
           grossSalary: 0,
           netSalary: 0,
         };
       }
 
-      const salary = toNumber(
+      const basicSalary = toNumber(
         selectedSalaryProfile.basicSalary,
       );
 
-      const allowance =
-        toNumber(
-          selectedSalaryProfile.fixedAllowance,
-        ) +
-        toNumber(additionalAllowance);
+      const fixedAllowance = toNumber(
+        selectedSalaryProfile.fixedAllowance,
+      );
 
-      const deduction =
-        toNumber(
-          selectedSalaryProfile.fixedDeduction,
-        ) +
-        toNumber(additionalDeduction);
+      const extraAllowance = toNumber(
+        additionalAllowance,
+      );
+
+      const fixedDeduction = toNumber(
+        selectedSalaryProfile.fixedDeduction,
+      );
+
+      const extraDeduction = toNumber(
+        additionalDeduction,
+      );
+
+      const allowances =
+        fixedAllowance + extraAllowance;
+
+      const deductions =
+        fixedDeduction + extraDeduction;
 
       const grossSalary =
-        salary + allowance;
+        basicSalary + allowances;
 
       return {
-        basicSalary: salary,
-        allowance,
-        deduction,
+        basicSalary,
+        fixedAllowance,
+        additionalAllowance: extraAllowance,
+        allowances,
+        fixedDeduction,
+        additionalDeduction: extraDeduction,
+        deductions,
         grossSalary,
-        netSalary:
-          grossSalary - deduction,
+        netSalary: grossSalary - deductions,
       };
     }, [
       selectedSalaryProfile,
@@ -535,301 +528,149 @@ export default function PayrollPage() {
       additionalDeduction,
     ]);
 
-  async function handleCreateSalaryProfile(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-
-    if (!isSuperAdmin) {
-      setError(
-        "Only Super Admin can create salary profiles.",
+  const employeesWithoutProfile =
+    useMemo(() => {
+      const profileIds = new Set(
+        salaryProfiles.map(
+          (profile) => profile.employeeId,
+        ),
       );
-      return;
-    }
 
-    if (!salaryEmployeeId) {
-      setError(
-        "Please select an employee.",
+      return employees.filter(
+        (employee) =>
+          !profileIds.has(employee.id) &&
+          (!employee.user?.status ||
+            employee.user.status === "ACTIVE"),
       );
-      return;
-    }
+    }, [employees, salaryProfiles]);
 
-    const parsedBasicSalary =
-      Number(basicSalary);
-
-    const parsedAllowance =
-      Number(fixedAllowance || 0);
-
-    const parsedDeduction =
-      Number(fixedDeduction || 0);
-
-    if (
-      !Number.isFinite(
-        parsedBasicSalary,
-      ) ||
-      parsedBasicSalary < 0
-    ) {
-      setError(
-        "Enter a valid basic salary.",
-      );
-      return;
-    }
-
-    if (
-      !Number.isFinite(
-        parsedAllowance,
-      ) ||
-      parsedAllowance < 0
-    ) {
-      setError(
-        "Enter a valid fixed allowance.",
-      );
-      return;
-    }
-
-    if (
-      !Number.isFinite(
-        parsedDeduction,
-      ) ||
-      parsedDeduction < 0
-    ) {
-      setError(
-        "Enter a valid fixed deduction.",
-      );
-      return;
-    }
-
+  function openCreateProfile(): void {
+    setEditingProfile(null);
+    setProfileEmployeeId(
+      employeesWithoutProfile[0]?.id ?? "",
+    );
+    setProfileBasicSalary("");
+    setProfileFixedAllowance("0");
+    setProfileFixedDeduction("0");
+    setShowProfileForm(true);
     setError("");
     setSuccess("");
-    setIsCreatingProfile(true);
+  }
+
+  function openEditProfile(
+    profile: SalaryProfile,
+  ): void {
+    setEditingProfile(profile);
+    setProfileEmployeeId(profile.employeeId);
+    setProfileBasicSalary(
+      String(toNumber(profile.basicSalary)),
+    );
+    setProfileFixedAllowance(
+      String(toNumber(profile.fixedAllowance)),
+    );
+    setProfileFixedDeduction(
+      String(toNumber(profile.fixedDeduction)),
+    );
+    setShowProfileForm(true);
+    setError("");
+    setSuccess("");
+  }
+
+  function closeProfileForm(): void {
+    setShowProfileForm(false);
+    setEditingProfile(null);
+  }
+
+  async function handleSaveSalaryProfile(): Promise<void> {
+    if (!isSuperAdmin) {
+      return;
+    }
+
+    if (!editingProfile && !profileEmployeeId) {
+      setError("Please select an employee.");
+      return;
+    }
+
+    const basic = toNumber(profileBasicSalary);
+
+    if (!profileBasicSalary.trim() || basic < 0) {
+      setError("Enter a valid basic salary.");
+      return;
+    }
 
     try {
-      const profile =
-        await createSalaryProfile({
-          employeeId:
-            salaryEmployeeId,
-          basicSalary:
-            parsedBasicSalary,
-          fixedAllowance:
-            parsedAllowance,
-          fixedDeduction:
-            parsedDeduction,
-        });
+      setIsSavingProfile(true);
+      setError("");
+      setSuccess("");
 
-      const selectedEmployee =
-        employees.find(
-          (employee) =>
-            employee.id ===
-            profile.employeeId,
-        );
-
-      const normalizedProfile: SalaryProfile = {
-        ...profile,
-        employee:
-          profile.employee ??
-          (selectedEmployee
-            ? {
-                id:
-                  selectedEmployee.id,
-                employeeNumber:
-                  selectedEmployee.employeeNumber,
-                firstName:
-                  selectedEmployee.firstName,
-                lastName:
-                  selectedEmployee.lastName,
-                department:
-                  selectedEmployee.department,
-                position:
-                  selectedEmployee.position,
-              }
-            : null),
+      const payload = {
+        basicSalary: basic,
+        fixedAllowance: toNumber(
+          profileFixedAllowance,
+        ),
+        fixedDeduction: toNumber(
+          profileFixedDeduction,
+        ),
       };
 
-      setSalaryProfiles(
-        (current) => [
-          normalizedProfile,
-          ...current,
-        ],
-      );
+      if (editingProfile) {
+        const updated =
+          await updateSalaryProfile(
+            editingProfile.employeeId,
+            payload,
+          );
 
-      setSalaryEmployeeId("");
-      setBasicSalary("");
-      setFixedAllowance("0");
-      setFixedDeduction("0");
-
-      setSuccess(
-        "Salary profile created successfully.",
-      );
-    } catch (requestError: unknown) {
-      setError(
-        getRequestErrorMessage(
-          requestError,
-          "Unable to create salary profile.",
-        ),
-      );
-    } finally {
-      setIsCreatingProfile(false);
-    }
-  }
-
-  function openProfileEditor(
-    profile: SalaryProfile,
-  ) {
-    setError("");
-    setSuccess("");
-
-    setEditingProfile(profile);
-
-    setEditBasicSalary(
-      String(profile.basicSalary),
-    );
-
-    setEditFixedAllowance(
-      String(profile.fixedAllowance),
-    );
-
-    setEditFixedDeduction(
-      String(profile.fixedDeduction),
-    );
-  }
-
-  function closeProfileEditor() {
-    if (isUpdatingProfile) {
-      return;
-    }
-
-    setEditingProfile(null);
-    setEditBasicSalary("");
-    setEditFixedAllowance("");
-    setEditFixedDeduction("");
-  }
-
-  async function handleUpdateSalaryProfile(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-
-    if (!editingProfile) {
-      return;
-    }
-
-    const parsedBasicSalary =
-      Number(editBasicSalary);
-
-    const parsedAllowance =
-      Number(editFixedAllowance || 0);
-
-    const parsedDeduction =
-      Number(editFixedDeduction || 0);
-
-    if (
-      !Number.isFinite(
-        parsedBasicSalary,
-      ) ||
-      parsedBasicSalary < 0
-    ) {
-      setError(
-        "Enter a valid basic salary.",
-      );
-      return;
-    }
-
-    if (
-      !Number.isFinite(
-        parsedAllowance,
-      ) ||
-      parsedAllowance < 0
-    ) {
-      setError(
-        "Enter a valid fixed allowance.",
-      );
-      return;
-    }
-
-    if (
-      !Number.isFinite(
-        parsedDeduction,
-      ) ||
-      parsedDeduction < 0
-    ) {
-      setError(
-        "Enter a valid fixed deduction.",
-      );
-      return;
-    }
-
-    setError("");
-    setSuccess("");
-    setIsUpdatingProfile(true);
-
-    try {
-      const profile =
-        await updateSalaryProfile(
-          editingProfile.employeeId,
-          {
-            basicSalary:
-              parsedBasicSalary,
-            fixedAllowance:
-              parsedAllowance,
-            fixedDeduction:
-              parsedDeduction,
-          },
+        setSalaryProfiles((current) =>
+          current.map((profile) =>
+            profile.id === updated.id
+              ? updated
+              : profile,
+          ),
         );
 
-      setSalaryProfiles((current) =>
-        current.map(
-          (currentProfile) => {
-            if (
-              currentProfile.id !==
-              profile.id
-            ) {
-              return currentProfile;
-            }
+        setSuccess(
+          "Salary profile updated successfully.",
+        );
+      } else {
+        const created =
+          await createSalaryProfile({
+            employeeId: profileEmployeeId,
+            ...payload,
+          });
 
-            return {
-              ...currentProfile,
-              ...profile,
-              employee:
-                profile.employee ??
-                currentProfile.employee,
-            };
-          },
-        ),
-      );
+        setSalaryProfiles((current) => [
+          created,
+          ...current,
+        ]);
 
-      closeProfileEditor();
+        setSuccess(
+          "Salary profile created successfully.",
+        );
+      }
 
-      setSuccess(
-        "Salary profile updated successfully.",
-      );
+      closeProfileForm();
     } catch (requestError: unknown) {
       setError(
         getRequestErrorMessage(
           requestError,
-          "Unable to update salary profile.",
+          "Unable to save salary profile.",
         ),
       );
     } finally {
-      setIsUpdatingProfile(false);
+      setIsSavingProfile(false);
     }
   }
 
-  async function handleGeneratePayroll(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
+  async function handleGeneratePayroll() {
+    if (!canGeneratePayroll) {
+      return;
+    }
 
     if (!payrollEmployeeId) {
       setError(
         "Please select an employee.",
       );
-      return;
-    }
 
-    if (!selectedSalaryProfile) {
-      setError(
-        "This employee does not have a salary profile.",
-      );
       return;
     }
 
@@ -843,6 +684,7 @@ export default function PayrollPage() {
       setError(
         "Enter a valid payroll year.",
       );
+
       return;
     }
 
@@ -854,6 +696,7 @@ export default function PayrollPage() {
       setError(
         "Select a valid payroll month.",
       );
+
       return;
     }
 
@@ -861,14 +704,15 @@ export default function PayrollPage() {
       setError(
         "Net salary cannot be negative.",
       );
+
       return;
     }
 
-    setError("");
-    setSuccess("");
-    setIsGeneratingPayroll(true);
-
     try {
+      setIsGeneratingPayroll(true);
+      setError("");
+      setSuccess("");
+
       const payroll =
         await generatePayroll({
           employeeId:
@@ -885,23 +729,8 @@ export default function PayrollPage() {
             ),
         });
 
-      const selectedProfile =
-        salaryProfiles.find(
-          (profile) =>
-            profile.employeeId ===
-            payroll.employeeId,
-        );
-
-      const normalizedPayroll: Payroll = {
-        ...payroll,
-        employee:
-          payroll.employee ??
-          selectedProfile?.employee ??
-          null,
-      };
-
       setPayrolls((current) => [
-        normalizedPayroll,
+        payroll,
         ...current,
       ]);
 
@@ -929,27 +758,23 @@ export default function PayrollPage() {
   async function handleApprovePayroll(
     payrollId: string,
   ) {
-    setError("");
-    setSuccess("");
-    setProcessingId(payrollId);
+    if (!isSuperAdmin) {
+      return;
+    }
 
     try {
+      setProcessingId(payrollId);
+      setError("");
+      setSuccess("");
+
       const updatedPayroll =
-        await approvePayroll(
-          payrollId,
-        );
+        await approvePayroll(payrollId);
 
       setPayrolls((current) =>
         current.map((payroll) =>
           payroll.id ===
           updatedPayroll.id
-            ? {
-                ...payroll,
-                ...updatedPayroll,
-                employee:
-                  updatedPayroll.employee ??
-                  payroll.employee,
-              }
+            ? updatedPayroll
             : payroll,
         ),
       );
@@ -972,27 +797,23 @@ export default function PayrollPage() {
   async function handleMarkPaid(
     payrollId: string,
   ) {
-    setError("");
-    setSuccess("");
-    setProcessingId(payrollId);
+    if (!isSuperAdmin) {
+      return;
+    }
 
     try {
+      setProcessingId(payrollId);
+      setError("");
+      setSuccess("");
+
       const updatedPayroll =
-        await markPayrollPaid(
-          payrollId,
-        );
+        await markPayrollPaid(payrollId);
 
       setPayrolls((current) =>
         current.map((payroll) =>
           payroll.id ===
           updatedPayroll.id
-            ? {
-                ...payroll,
-                ...updatedPayroll,
-                employee:
-                  updatedPayroll.employee ??
-                  payroll.employee,
-              }
+            ? updatedPayroll
             : payroll,
         ),
       );
@@ -1015,27 +836,24 @@ export default function PayrollPage() {
   if (!user) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-100">
-        <p className="text-slate-600">
-          Loading payroll...
-        </p>
+        <p className="text-slate-600">Loading payroll...</p>
       </main>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      <Sidebar role={user.role} />
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <main className="flex-1 p-8">
-          <div>
+    <div className="p-8">
+      <div>
             <h1 className="text-3xl font-bold text-slate-900">
-              Payroll
+              {isEmployee
+                ? "My Payroll"
+                : "Payroll"}
             </h1>
 
             <p className="mt-2 text-slate-600">
-              Manage employee salary profiles
-              and monthly payroll.
+              {isEmployee
+                ? "View your monthly salary and payroll history."
+                : "Manage employee salary profiles and monthly payroll."}
             </p>
           </div>
 
@@ -1062,39 +880,45 @@ export default function PayrollPage() {
           )}
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            {!isEmployee && (
+              <>
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <p className="text-sm text-slate-500">
+                    Employees
+                  </p>
+
+                  <p className="mt-2 text-3xl font-bold text-slate-900">
+                    {employees.length}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <p className="text-sm text-slate-500">
+                    Salary Profiles
+                  </p>
+
+                  <p className="mt-2 text-3xl font-bold text-slate-900">
+                    {salaryProfiles.length}
+                  </p>
+                </div>
+              </>
+            )}
+
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-sm text-slate-500">
-                Employees
+                {isEmployee
+                  ? "My Payroll Records"
+                  : "Draft Payrolls"}
               </p>
 
               <p className="mt-2 text-3xl font-bold text-slate-900">
-                {employees.length}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">
-                Salary Profiles
-              </p>
-
-              <p className="mt-2 text-3xl font-bold text-slate-900">
-                {salaryProfiles.length}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">
-                Draft Payrolls
-              </p>
-
-              <p className="mt-2 text-3xl font-bold text-slate-900">
-                {
-                  payrolls.filter(
-                    (payroll) =>
-                      payroll.status ===
-                      "DRAFT",
-                  ).length
-                }
+                {isEmployee
+                  ? payrolls.length
+                  : payrolls.filter(
+                      (payroll) =>
+                        payroll.status ===
+                        "DRAFT",
+                    ).length}
               </p>
             </div>
 
@@ -1115,154 +939,537 @@ export default function PayrollPage() {
             </div>
           </div>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() =>
-                setActiveTab(
-                  "salary-profiles",
-                )
-              }
-              className={`rounded-xl px-5 py-3 text-sm font-semibold transition ${
-                activeTab ===
-                "salary-profiles"
-                  ? "bg-slate-900 text-white"
-                  : "border border-slate-300 bg-white text-slate-700"
-              }`}
-            >
-              Salary Profiles
-            </button>
+          {!isEmployee && (
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveTab(
+                    "salary-profiles",
+                  )
+                }
+                className={`rounded-xl px-5 py-3 text-sm font-semibold ${
+                  activeTab ===
+                  "salary-profiles"
+                    ? "bg-slate-900 text-white"
+                    : "border border-slate-300 bg-white text-slate-700"
+                }`}
+              >
+                Salary Profiles
+              </button>
 
-            <button
-              type="button"
-              onClick={() =>
-                setActiveTab("generate")
-              }
-              className={`rounded-xl px-5 py-3 text-sm font-semibold transition ${
-                activeTab === "generate"
-                  ? "bg-slate-900 text-white"
-                  : "border border-slate-300 bg-white text-slate-700"
-              }`}
-            >
-              Generate Payroll
-            </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveTab("generate")
+                }
+                className={`rounded-xl px-5 py-3 text-sm font-semibold ${
+                  activeTab === "generate"
+                    ? "bg-slate-900 text-white"
+                    : "border border-slate-300 bg-white text-slate-700"
+                }`}
+              >
+                Generate Payroll
+              </button>
 
-            <button
-              type="button"
-              onClick={() =>
-                setActiveTab("history")
-              }
-              className={`rounded-xl px-5 py-3 text-sm font-semibold transition ${
-                activeTab === "history"
-                  ? "bg-slate-900 text-white"
-                  : "border border-slate-300 bg-white text-slate-700"
-              }`}
-            >
-              Payroll History
-            </button>
-          </div>
-
-          {isLoading && (
-            <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-500">
-              Loading payroll data...
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveTab("history")
+                }
+                className={`rounded-xl px-5 py-3 text-sm font-semibold ${
+                  activeTab === "history"
+                    ? "bg-slate-900 text-white"
+                    : "border border-slate-300 bg-white text-slate-700"
+                }`}
+              >
+                Payroll History
+              </button>
             </div>
           )}
 
-          {!isLoading &&
-            activeTab ===
-              "salary-profiles" && (
-              <div className="mt-8 grid gap-8 xl:grid-cols-[380px_1fr]">
-                {isSuperAdmin && (
-                  <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-xl bg-slate-100 p-3">
-                        <WalletCards
-                          size={22}
-                          className="text-slate-700"
-                        />
-                      </div>
+          {isLoading ? (
+            <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-500">
+              Loading payroll data...
+            </div>
+          ) : (
+            <>
+              {!isEmployee &&
+                activeTab ===
+                  "salary-profiles" && (
+                  <section className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div className="border-b border-slate-200 p-5">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                          <WalletCards size={22} />
 
-                      <div>
-                        <h2 className="font-semibold text-slate-900">
-                          Salary Profile
-                        </h2>
+                          <div>
+                            <h2 className="text-lg font-semibold text-slate-900">
+                              Salary Profiles
+                            </h2>
 
-                        <p className="text-sm text-slate-500">
-                          Configure an employee
-                          salary.
-                        </p>
+                            <p className="text-sm text-slate-500">
+                              {isSuperAdmin
+                                ? "Set basic salary, fixed allowance, and fixed deduction. These amounts are used when generating payroll."
+                                : "View employee salary configurations. Only Super Admin can create or edit profiles."}
+                            </p>
+                          </div>
+                        </div>
+
+                        {isSuperAdmin ? (
+                          <button
+                            type="button"
+                            onClick={openCreateProfile}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                          >
+                            <Plus className="h-4 w-4" />
+                            New Profile
+                          </button>
+                        ) : null}
                       </div>
                     </div>
 
-                    <form
-                      onSubmit={
-                        handleCreateSalaryProfile
-                      }
-                      className="mt-6"
-                    >
-                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                    {showProfileForm && isSuperAdmin ? (
+                      <div className="border-b border-slate-200 bg-slate-50 p-5">
+                        <div className="mb-4 flex items-center justify-between">
+                          <h3 className="text-sm font-semibold text-slate-900">
+                            {editingProfile
+                              ? "Edit Salary Profile"
+                              : "Create Salary Profile"}
+                          </h3>
+
+                          <button
+                            type="button"
+                            onClick={closeProfileForm}
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-slate-700"
+                            aria-label="Close form"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {!editingProfile ? (
+                            <div className="md:col-span-2">
+                              <label className="mb-2 block text-sm font-medium text-slate-700">
+                                Employee
+                              </label>
+                              <select
+                                value={profileEmployeeId}
+                                onChange={(event) =>
+                                  setProfileEmployeeId(
+                                    event.target.value,
+                                  )
+                                }
+                                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
+                              >
+                                <option value="">
+                                  Select employee
+                                </option>
+                                {employeesWithoutProfile.map(
+                                  (employee) => (
+                                    <option
+                                      key={employee.id}
+                                      value={employee.id}
+                                    >
+                                      {employee.employeeNumber}{" "}
+                                      - {employee.firstName}{" "}
+                                      {employee.lastName}
+                                    </option>
+                                  ),
+                                )}
+                              </select>
+                              {employeesWithoutProfile.length ===
+                              0 ? (
+                                <p className="mt-2 text-xs text-amber-700">
+                                  All active employees already
+                                  have a salary profile.
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <div className="md:col-span-2">
+                              <label className="mb-2 block text-sm font-medium text-slate-700">
+                                Employee
+                              </label>
+                              <input
+                                type="text"
+                                readOnly
+                                value={
+                                  editingProfile.employee
+                                    ? `${editingProfile.employee.employeeNumber} - ${editingProfile.employee.firstName} ${editingProfile.employee.lastName}`
+                                    : "Employee"
+                                }
+                                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
+                              />
+                            </div>
+                          )}
+
+                          <div>
+                            <label className="mb-2 block text-sm font-medium text-slate-700">
+                              Basic salary
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={profileBasicSalary}
+                              onChange={(event) =>
+                                setProfileBasicSalary(
+                                  event.target.value,
+                                )
+                              }
+                              placeholder="e.g. 50000"
+                              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-sm font-medium text-slate-700">
+                              Fixed allowance
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={profileFixedAllowance}
+                              onChange={(event) =>
+                                setProfileFixedAllowance(
+                                  event.target.value,
+                                )
+                              }
+                              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-sm font-medium text-slate-700">
+                              Fixed deduction
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={profileFixedDeduction}
+                              onChange={(event) =>
+                                setProfileFixedDeduction(
+                                  event.target.value,
+                                )
+                              }
+                              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex justify-end gap-3">
+                          <button
+                            type="button"
+                            onClick={closeProfileForm}
+                            className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isSavingProfile}
+                            onClick={() =>
+                              void handleSaveSalaryProfile()
+                            }
+                            className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                          >
+                            {isSavingProfile
+                              ? "Saving..."
+                              : editingProfile
+                                ? "Save Changes"
+                                : "Create Profile"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {filteredSalaryProfiles.length ===
+                    0 ? (
+                      <div className="px-6 py-12 text-center text-slate-500">
+                        <p className="font-medium text-slate-700">
+                          No salary profiles yet
+                        </p>
+                        <p className="mt-1 text-sm">
+                          {isSuperAdmin
+                            ? "Create a profile with basic salary first, then generate payroll."
+                            : "Ask Super Admin to create salary profiles before generating payroll."}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[800px] text-left">
+                          <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                            <tr>
+                              <th className="px-6 py-4">
+                                Employee
+                              </th>
+                              <th className="px-6 py-4">
+                                Basic Salary
+                              </th>
+                              <th className="px-6 py-4">
+                                Fixed Allowance
+                              </th>
+                              <th className="px-6 py-4">
+                                Fixed Deduction
+                              </th>
+                              {isSuperAdmin ? (
+                                <th className="px-6 py-4 text-right">
+                                  Actions
+                                </th>
+                              ) : null}
+                            </tr>
+                          </thead>
+
+                          <tbody className="divide-y divide-slate-200">
+                            {filteredSalaryProfiles.map(
+                              (profile) => (
+                                <tr
+                                  key={profile.id}
+                                  className="text-sm text-slate-700"
+                                >
+                                  <td className="px-6 py-5">
+                                    <p className="font-semibold text-slate-900">
+                                      {profile.employee
+                                        ? `${profile.employee.firstName} ${profile.employee.lastName}`
+                                        : "Unknown employee"}
+                                    </p>
+                                    <p className="text-xs text-slate-500">
+                                      {profile.employee
+                                        ?.employeeNumber ??
+                                        "—"}
+                                    </p>
+                                  </td>
+                                  <td className="px-6 py-5 font-semibold tabular-nums text-slate-900">
+                                    {formatMoney(
+                                      profile.basicSalary,
+                                    )}
+                                  </td>
+                                  <td className="px-6 py-5 tabular-nums">
+                                    {formatMoney(
+                                      profile.fixedAllowance,
+                                    )}
+                                  </td>
+                                  <td className="px-6 py-5 tabular-nums">
+                                    {formatMoney(
+                                      profile.fixedDeduction,
+                                    )}
+                                  </td>
+                                  {isSuperAdmin ? (
+                                    <td className="px-6 py-5 text-right">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          openEditProfile(
+                                            profile,
+                                          )
+                                        }
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100"
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                        Edit
+                                      </button>
+                                    </td>
+                                  ) : null}
+                                </tr>
+                              ),
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
+                )}
+
+              {!isEmployee &&
+                activeTab === "generate" && (
+                  <div className="mt-8 grid gap-8 xl:grid-cols-2">
+                    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <CircleDollarSign
+                          size={22}
+                        />
+
+                        <div>
+                          <h2 className="text-lg font-semibold text-slate-900">
+                            Generate Payroll
+                          </h2>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Full salary comes from the salary
+                            profile. Add only extra allowance
+                            or deduction for this month.
+                          </p>
+                        </div>
+                      </div>
+
+                      {salaryProfiles.length === 0 ? (
+                        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                          No salary profiles found.{" "}
+                          {isSuperAdmin
+                            ? "Create a salary profile first (basic salary + fixed amounts)."
+                            : "Ask Super Admin to create salary profiles before generating."}
+                          {isSuperAdmin ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveTab(
+                                  "salary-profiles",
+                                );
+                                openCreateProfile();
+                              }}
+                              className="ml-1 font-semibold underline"
+                            >
+                              Create profile
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      <label className="mb-2 mt-6 block text-sm font-medium text-slate-700">
                         Employee
                       </label>
 
                       <select
-                        required
                         value={
-                          salaryEmployeeId
+                          payrollEmployeeId
                         }
                         onChange={(event) =>
-                          setSalaryEmployeeId(
+                          setPayrollEmployeeId(
                             event.target.value,
                           )
                         }
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black outline-none"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
                       >
                         <option value="">
                           Select an employee
                         </option>
 
-                        {employeesWithoutProfile.map(
-                          (employee) => (
+                        {salaryProfiles.map(
+                          (profile) => (
                             <option
-                              key={
-                                employee.id
-                              }
+                              key={profile.id}
                               value={
-                                employee.id
+                                profile.employeeId
                               }
                             >
-                              {getEmployeeName(
-                                employee,
-                              )}{" "}
-                              (
-                              {
-                                employee.employeeNumber
-                              }
-                              )
+                              {profile.employee
+                                ? `${profile.employee.firstName} ${profile.employee.lastName}`
+                                : "Unknown employee"}
                             </option>
                           ),
                         )}
                       </select>
 
-                      <label className="mb-2 mt-5 block text-sm font-medium text-slate-700">
-                        Basic salary
-                      </label>
+                      {selectedSalaryProfile ? (
+                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            From salary profile
+                          </p>
+                          <div className="mt-2 grid grid-cols-3 gap-3 text-sm">
+                            <div>
+                              <p className="text-slate-500">
+                                Basic
+                              </p>
+                              <p className="font-semibold tabular-nums text-slate-900">
+                                {formatMoney(
+                                  selectedSalaryProfile.basicSalary,
+                                )}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-slate-500">
+                                Fixed allow.
+                              </p>
+                              <p className="font-semibold tabular-nums text-slate-900">
+                                {formatMoney(
+                                  selectedSalaryProfile.fixedAllowance,
+                                )}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-slate-500">
+                                Fixed deduct.
+                              </p>
+                              <p className="font-semibold tabular-nums text-slate-900">
+                                {formatMoney(
+                                  selectedSalaryProfile.fixedDeduction,
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
 
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        required
-                        value={basicSalary}
-                        onChange={(event) =>
-                          setBasicSalary(
-                            event.target.value,
-                          )
-                        }
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black outline-none"
-                      />
+                      <div className="mt-5 grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="mb-2 block text-sm font-medium text-slate-700">
+                            Month
+                          </label>
+
+                          <select
+                            value={
+                              payrollMonth
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setPayrollMonth(
+                                event.target
+                                  .value,
+                              )
+                            }
+                            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
+                          >
+                            {monthNames.map(
+                              (
+                                month,
+                                index,
+                              ) => (
+                                <option
+                                  key={month}
+                                  value={
+                                    index + 1
+                                  }
+                                >
+                                  {month}
+                                </option>
+                              ),
+                            )}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="mb-2 block text-sm font-medium text-slate-700">
+                            Year
+                          </label>
+
+                          <input
+                            type="number"
+                            min="2000"
+                            value={
+                              payrollYear
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setPayrollYear(
+                                event.target
+                                  .value,
+                              )
+                            }
+                            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
+                          />
+                        </div>
+                      </div>
 
                       <label className="mb-2 mt-5 block text-sm font-medium text-slate-700">
-                        Fixed allowance
+                        Additional allowance
+                        <span className="ml-1 font-normal text-slate-400">
+                          this month only
+                        </span>
                       </label>
 
                       <input
@@ -1270,18 +1477,21 @@ export default function PayrollPage() {
                         min="0"
                         step="0.01"
                         value={
-                          fixedAllowance
+                          additionalAllowance
                         }
                         onChange={(event) =>
-                          setFixedAllowance(
+                          setAdditionalAllowance(
                             event.target.value,
                           )
                         }
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black outline-none"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
                       />
 
                       <label className="mb-2 mt-5 block text-sm font-medium text-slate-700">
-                        Fixed deduction
+                        Additional deduction
+                        <span className="ml-1 font-normal text-slate-400">
+                          this month only
+                        </span>
                       </label>
 
                       <input
@@ -1289,41 +1499,190 @@ export default function PayrollPage() {
                         min="0"
                         step="0.01"
                         value={
-                          fixedDeduction
+                          additionalDeduction
                         }
                         onChange={(event) =>
-                          setFixedDeduction(
+                          setAdditionalDeduction(
                             event.target.value,
                           )
                         }
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black outline-none"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
                       />
 
                       <button
-                        type="submit"
-                        disabled={
-                          isCreatingProfile
+                        type="button"
+                        onClick={() =>
+                          void handleGeneratePayroll()
                         }
-                        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={
+                          isGeneratingPayroll ||
+                          salaryProfiles.length ===
+                            0
+                        }
+                        className="mt-6 w-full rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
                       >
-                        <Plus size={18} />
-
-                        {isCreatingProfile
-                          ? "Creating..."
-                          : "Create Profile"}
+                        {isGeneratingPayroll
+                          ? "Generating..."
+                          : "Generate Full Payroll"}
                       </button>
-                    </form>
-                  </section>
+                    </section>
+
+                    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                      <h2 className="text-lg font-semibold text-slate-900">
+                        Payroll Preview
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Full calculated salary for the
+                        selected employee and month.
+                      </p>
+
+                      {!selectedSalaryProfile ? (
+                        <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center">
+                          <p className="text-sm font-medium text-slate-700">
+                            Select an employee to preview
+                            full salary
+                          </p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Basic, allowances, deductions,
+                            gross, and net will appear here.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="mt-6 space-y-3">
+                          <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3">
+                            <span className="text-sm font-medium text-slate-600">
+                              Basic salary
+                            </span>
+                            <span className="text-base font-semibold tabular-nums text-slate-900">
+                              {formatMoney(
+                                payrollPreview.basicSalary,
+                              )}
+                            </span>
+                          </div>
+
+                          <div className="rounded-xl border border-slate-200 px-4 py-3">
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-sm font-semibold text-slate-800">
+                                Allowances
+                              </span>
+                              <span className="text-base font-semibold tabular-nums text-slate-900">
+                                {formatMoney(
+                                  payrollPreview.allowances,
+                                )}
+                              </span>
+                            </div>
+                            <div className="mt-2 space-y-1.5 border-t border-slate-100 pt-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-slate-500">
+                                  Fixed allowance
+                                </span>
+                                <span className="tabular-nums text-slate-700">
+                                  {formatMoney(
+                                    payrollPreview.fixedAllowance,
+                                  )}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-slate-500">
+                                  Additional allowance
+                                </span>
+                                <span className="tabular-nums text-slate-700">
+                                  {formatMoney(
+                                    payrollPreview.additionalAllowance,
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border border-slate-200 px-4 py-3">
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-sm font-semibold text-slate-800">
+                                Deductions
+                              </span>
+                              <span className="text-base font-semibold tabular-nums text-slate-900">
+                                {formatMoney(
+                                  payrollPreview.deductions,
+                                )}
+                              </span>
+                            </div>
+                            <div className="mt-2 space-y-1.5 border-t border-slate-100 pt-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-slate-500">
+                                  Fixed deduction
+                                </span>
+                                <span className="tabular-nums text-slate-700">
+                                  {formatMoney(
+                                    payrollPreview.fixedDeduction,
+                                  )}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-slate-500">
+                                  Additional deduction
+                                </span>
+                                <span className="tabular-nums text-slate-700">
+                                  {formatMoney(
+                                    payrollPreview.additionalDeduction,
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+                            <span className="text-sm font-semibold text-slate-800">
+                              Gross salary
+                            </span>
+                            <span className="text-base font-bold tabular-nums text-slate-900">
+                              {formatMoney(
+                                payrollPreview.grossSalary,
+                              )}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-900 px-5 py-4 text-white">
+                            <span className="text-sm font-semibold tracking-wide">
+                              Net salary
+                            </span>
+                            <span className="text-xl font-bold tabular-nums">
+                              {formatMoney(
+                                payrollPreview.netSalary,
+                              )}
+                            </span>
+                          </div>
+
+                          {payrollPreview.netSalary < 0 ? (
+                            <p className="text-sm font-medium text-red-600">
+                              Net salary cannot be negative.
+                              Reduce deductions.
+                            </p>
+                          ) : null}
+                        </div>
+                      )}
+                    </section>
+                  </div>
                 )}
 
-                <section
-                  className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ${
-                    !isSuperAdmin
-                      ? "xl:col-span-2"
-                      : ""
-                  }`}
-                >
+              {(isEmployee ||
+                activeTab ===
+                  "history") && (
+                <section className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="flex flex-col justify-between gap-4 border-b border-slate-200 p-5 md:flex-row md:items-center">
+                    <div>
+                      <h2 className="font-semibold text-slate-900">
+                        {isEmployee
+                          ? "My Payroll History"
+                          : "Payroll History"}
+                      </h2>
+
+                      <p className="text-sm text-slate-500">
+                        {isEmployee
+                          ? "Only your payroll records are displayed."
+                          : "All employee payroll records."}
+                      </p>
+                    </div>
+
                     <div className="flex w-full max-w-md items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3">
                       <Search
                         size={18}
@@ -1331,32 +1690,30 @@ export default function PayrollPage() {
                       />
 
                       <input
-                        type="search"
                         value={search}
                         onChange={(event) =>
                           setSearch(
                             event.target.value,
                           )
                         }
-                        placeholder="Search salary profiles"
+                        placeholder="Search payroll history"
                         className="w-full bg-white text-sm text-black outline-none"
                       />
                     </div>
-
-                    <p className="text-sm text-slate-500">
-                      {
-                        filteredSalaryProfiles.length
-                      }{" "}
-                      profile(s)
-                    </p>
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[850px] text-left">
+                    <table className="w-full min-w-[1100px] text-left">
                       <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                         <tr>
+                          {!isEmployee && (
+                            <th className="px-6 py-4">
+                              Employee
+                            </th>
+                          )}
+
                           <th className="px-6 py-4">
-                            Employee
+                            Period
                           </th>
 
                           <th className="px-6 py-4">
@@ -1364,95 +1721,180 @@ export default function PayrollPage() {
                           </th>
 
                           <th className="px-6 py-4">
-                            Allowance
+                            Allowances
                           </th>
 
                           <th className="px-6 py-4">
-                            Deduction
+                            Deductions
                           </th>
 
                           <th className="px-6 py-4">
-                            Action
+                            Gross
                           </th>
+
+                          <th className="px-6 py-4">
+                            Net Salary
+                          </th>
+
+                          <th className="px-6 py-4">
+                            Status
+                          </th>
+
+                          {!isEmployee && (
+                            <th className="px-6 py-4">
+                              Action
+                            </th>
+                          )}
                         </tr>
                       </thead>
 
                       <tbody className="divide-y divide-slate-200">
-                        {filteredSalaryProfiles.map(
-                          (profile) => (
+                        {filteredPayrolls.map(
+                          (payroll) => (
                             <tr
-                              key={
-                                profile.id
-                              }
+                              key={payroll.id}
                               className="text-sm text-slate-700"
                             >
+                              {!isEmployee && (
+                                <td className="px-6 py-5">
+                                  <p className="font-semibold text-slate-900">
+                                    {getEmployeeName(
+                                      payroll.employee,
+                                    )}
+                                  </p>
+
+                                  <p className="text-xs text-slate-500">
+                                    {payroll.employee
+                                      ?.employeeNumber ??
+                                      "—"}
+                                  </p>
+                                </td>
+                              )}
+
                               <td className="px-6 py-5">
-                                <p className="font-semibold text-slate-900">
-                                  {getProfileEmployeeName(
-                                    profile,
+                                {monthNames[
+                                  payroll.month -
+                                    1
+                                ] ??
+                                  "Unknown"}{" "}
+                                {payroll.year}
+                              </td>
+
+                              <td className="px-6 py-5 font-medium tabular-nums text-slate-800">
+                                {formatMoney(
+                                  payroll.basicSalary,
+                                )}
+                              </td>
+
+                              <td className="px-6 py-5 font-medium tabular-nums text-slate-800">
+                                {formatMoney(
+                                  payroll.allowances,
+                                )}
+                              </td>
+
+                              <td className="px-6 py-5 font-medium tabular-nums text-slate-800">
+                                {formatMoney(
+                                  payroll.deductions,
+                                )}
+                              </td>
+
+                              <td className="px-6 py-5 font-semibold tabular-nums text-slate-900">
+                                {formatMoney(
+                                  payroll.grossSalary,
+                                )}
+                              </td>
+
+                              <td className="px-6 py-5 text-base font-bold tabular-nums text-slate-950">
+                                {formatMoney(
+                                  payroll.netSalary,
+                                )}
+                              </td>
+
+                              <td className="px-6 py-5">
+                                <span
+                                  className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
+                                    payroll.status,
+                                  )}`}
+                                >
+                                  {
+                                    payroll.status
+                                  }
+                                </span>
+                              </td>
+
+                              {!isEmployee && (
+                                <td className="px-6 py-5">
+                                  {isSuperAdmin &&
+                                    payroll.status ===
+                                      "DRAFT" && (
+                                      <button
+                                        type="button"
+                                        disabled={
+                                          processingId ===
+                                          payroll.id
+                                        }
+                                        onClick={() =>
+                                          void handleApprovePayroll(
+                                            payroll.id,
+                                          )
+                                        }
+                                        className="flex items-center gap-1 font-semibold text-blue-700 hover:underline disabled:opacity-50"
+                                      >
+                                        <Check
+                                          size={16}
+                                        />
+
+                                        Approve
+                                      </button>
+                                    )}
+
+                                  {isSuperAdmin &&
+                                    payroll.status ===
+                                      "APPROVED" && (
+                                      <button
+                                        type="button"
+                                        disabled={
+                                          processingId ===
+                                          payroll.id
+                                        }
+                                        onClick={() =>
+                                          void handleMarkPaid(
+                                            payroll.id,
+                                          )
+                                        }
+                                        className="flex items-center gap-1 font-semibold text-emerald-700 hover:underline disabled:opacity-50"
+                                      >
+                                        <Banknote
+                                          size={16}
+                                        />
+
+                                        Mark Paid
+                                      </button>
+                                    )}
+
+                                  {!isSuperAdmin && (
+                                    <span className="text-slate-500">
+                                      View only
+                                    </span>
                                   )}
-                                </p>
-
-                                <p className="text-xs text-slate-500">
-                                  {getProfileEmployeeNumber(
-                                    profile,
-                                  )}
-                                </p>
-                              </td>
-
-                              <td className="px-6 py-5">
-                                {formatMoney(
-                                  profile.basicSalary,
-                                )}
-                              </td>
-
-                              <td className="px-6 py-5">
-                                {formatMoney(
-                                  profile.fixedAllowance,
-                                )}
-                              </td>
-
-                              <td className="px-6 py-5">
-                                {formatMoney(
-                                  profile.fixedDeduction,
-                                )}
-                              </td>
-
-                              <td className="px-6 py-5">
-                                {isSuperAdmin ? (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      openProfileEditor(
-                                        profile,
-                                      )
-                                    }
-                                    className="flex items-center gap-1 font-medium text-blue-700 hover:underline"
-                                  >
-                                    <Pencil
-                                      size={
-                                        15
-                                      }
-                                    />
-
-                                    Edit
-                                  </button>
-                                ) : (
-                                  "View only"
-                                )}
-                              </td>
+                                </td>
+                              )}
                             </tr>
                           ),
                         )}
 
-                        {filteredSalaryProfiles.length ===
+                        {filteredPayrolls.length ===
                           0 && (
                           <tr>
                             <td
-                              colSpan={5}
-                              className="px-6 py-10 text-center text-slate-500"
+                              colSpan={
+                                isEmployee
+                                  ? 7
+                                  : 9
+                              }
+                              className="px-6 py-12 text-center text-slate-500"
                             >
-                              No salary profiles
+                              No payroll records
                               found.
                             </td>
                           </tr>
@@ -1461,620 +1903,9 @@ export default function PayrollPage() {
                     </table>
                   </div>
                 </section>
-              </div>
-            )}
-
-          {!isLoading &&
-            activeTab === "generate" && (
-              <div className="mt-8 grid gap-8 xl:grid-cols-[440px_1fr]">
-                <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-slate-100 p-3">
-                      <CircleDollarSign
-                        size={22}
-                      />
-                    </div>
-
-                    <div>
-                      <h2 className="font-semibold text-slate-900">
-                        Generate Payroll
-                      </h2>
-
-                      <p className="text-sm text-slate-500">
-                        Create a monthly
-                        payroll record.
-                      </p>
-                    </div>
-                  </div>
-
-                  <form
-                    onSubmit={
-                      handleGeneratePayroll
-                    }
-                    className="mt-6"
-                  >
-                    <label className="mb-2 block text-sm font-medium text-slate-700">
-                      Employee
-                    </label>
-
-                    <select
-                      required
-                      value={
-                        payrollEmployeeId
-                      }
-                      onChange={(event) =>
-                        setPayrollEmployeeId(
-                          event.target.value,
-                        )
-                      }
-                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black"
-                    >
-                      <option value="">
-                        Select an employee
-                      </option>
-
-                      {salaryProfiles.map(
-                        (profile) => (
-                          <option
-                            key={profile.id}
-                            value={
-                              profile.employeeId
-                            }
-                          >
-                            {getProfileEmployeeName(
-                              profile,
-                            )}
-                          </option>
-                        ),
-                      )}
-                    </select>
-
-                    <div className="mt-5 grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="mb-2 block text-sm font-medium text-slate-700">
-                          Month
-                        </label>
-
-                        <select
-                          value={
-                            payrollMonth
-                          }
-                          onChange={(
-                            event,
-                          ) =>
-                            setPayrollMonth(
-                              event.target
-                                .value,
-                            )
-                          }
-                          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black"
-                        >
-                          {monthNames.map(
-                            (
-                              month,
-                              index,
-                            ) => (
-                              <option
-                                key={
-                                  month
-                                }
-                                value={
-                                  index +
-                                  1
-                                }
-                              >
-                                {month}
-                              </option>
-                            ),
-                          )}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-sm font-medium text-slate-700">
-                          Year
-                        </label>
-
-                        <input
-                          type="number"
-                          min="2000"
-                          value={
-                            payrollYear
-                          }
-                          onChange={(
-                            event,
-                          ) =>
-                            setPayrollYear(
-                              event.target
-                                .value,
-                            )
-                          }
-                          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black"
-                        />
-                      </div>
-                    </div>
-
-                    <label className="mb-2 mt-5 block text-sm font-medium text-slate-700">
-                      Additional allowance
-                    </label>
-
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={
-                        additionalAllowance
-                      }
-                      onChange={(event) =>
-                        setAdditionalAllowance(
-                          event.target.value,
-                        )
-                      }
-                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black"
-                    />
-
-                    <label className="mb-2 mt-5 block text-sm font-medium text-slate-700">
-                      Additional deduction
-                    </label>
-
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={
-                        additionalDeduction
-                      }
-                      onChange={(event) =>
-                        setAdditionalDeduction(
-                          event.target.value,
-                        )
-                      }
-                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black"
-                    />
-
-                    <button
-                      type="submit"
-                      disabled={
-                        isGeneratingPayroll
-                      }
-                      className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <BadgeDollarSign
-                        size={18}
-                      />
-
-                      {isGeneratingPayroll
-                        ? "Generating..."
-                        : "Generate Payroll"}
-                    </button>
-                  </form>
-                </section>
-
-                <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Payroll Preview
-                  </h2>
-
-                  {!selectedSalaryProfile ? (
-                    <p className="mt-4 text-slate-500">
-                      Select an employee to
-                      calculate payroll.
-                    </p>
-                  ) : (
-                    <div className="mt-6 space-y-4">
-                      <div className="flex justify-between border-b border-slate-200 pb-4">
-                        <span className="text-slate-600">
-                          Basic salary
-                        </span>
-
-                        <strong>
-                          {formatMoney(
-                            payrollPreview.basicSalary,
-                          )}
-                        </strong>
-                      </div>
-
-                      <div className="flex justify-between border-b border-slate-200 pb-4">
-                        <span className="text-slate-600">
-                          Total allowances
-                        </span>
-
-                        <strong className="text-emerald-700">
-                          +
-                          {formatMoney(
-                            payrollPreview.allowance,
-                          )}
-                        </strong>
-                      </div>
-
-                      <div className="flex justify-between border-b border-slate-200 pb-4">
-                        <span className="text-slate-600">
-                          Gross salary
-                        </span>
-
-                        <strong>
-                          {formatMoney(
-                            payrollPreview.grossSalary,
-                          )}
-                        </strong>
-                      </div>
-
-                      <div className="flex justify-between border-b border-slate-200 pb-4">
-                        <span className="text-slate-600">
-                          Total deductions
-                        </span>
-
-                        <strong className="text-red-600">
-                          -
-                          {formatMoney(
-                            payrollPreview.deduction,
-                          )}
-                        </strong>
-                      </div>
-
-                      <div className="flex justify-between rounded-2xl bg-slate-900 p-5 text-white">
-                        <span>
-                          Net salary
-                        </span>
-
-                        <strong className="text-xl">
-                          {formatMoney(
-                            payrollPreview.netSalary,
-                          )}
-                        </strong>
-                      </div>
-                    </div>
-                  )}
-                </section>
-              </div>
-            )}
-
-          {!isLoading &&
-            activeTab === "history" && (
-              <section className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="flex flex-col justify-between gap-4 border-b border-slate-200 p-5 md:flex-row md:items-center">
-                  <div className="flex w-full max-w-md items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3">
-                    <Search
-                      size={18}
-                      className="text-slate-400"
-                    />
-
-                    <input
-                      value={search}
-                      onChange={(event) =>
-                        setSearch(
-                          event.target.value,
-                        )
-                      }
-                      placeholder="Search payroll history"
-                      className="w-full bg-white text-sm text-black outline-none"
-                    />
-                  </div>
-
-                  <p className="text-sm text-slate-500">
-                    {
-                      filteredPayrolls.length
-                    }{" "}
-                    record(s)
-                  </p>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1150px] text-left">
-                    <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                      <tr>
-                        <th className="px-6 py-4">
-                          Employee
-                        </th>
-
-                        <th className="px-6 py-4">
-                          Period
-                        </th>
-
-                        <th className="px-6 py-4">
-                          Basic
-                        </th>
-
-                        <th className="px-6 py-4">
-                          Allowances
-                        </th>
-
-                        <th className="px-6 py-4">
-                          Deductions
-                        </th>
-
-                        <th className="px-6 py-4">
-                          Net Salary
-                        </th>
-
-                        <th className="px-6 py-4">
-                          Status
-                        </th>
-
-                        <th className="px-6 py-4">
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-
-                    <tbody className="divide-y divide-slate-200">
-                      {filteredPayrolls.map(
-                        (payroll) => (
-                          <tr
-                            key={payroll.id}
-                            className="text-sm text-slate-700"
-                          >
-                            <td className="px-6 py-5">
-                              <p className="font-semibold text-slate-900">
-                                {getPayrollEmployeeName(
-                                  payroll,
-                                )}
-                              </p>
-
-                              <p className="text-xs text-slate-500">
-                                {getPayrollEmployeeNumber(
-                                  payroll,
-                                )}
-                              </p>
-                            </td>
-
-                            <td className="px-6 py-5">
-                              {monthNames[
-                                payroll.month -
-                                  1
-                              ] ??
-                                "Unknown month"}{" "}
-                              {payroll.year}
-                            </td>
-
-                            <td className="px-6 py-5">
-                              {formatMoney(
-                                payroll.basicSalary,
-                              )}
-                            </td>
-
-                            <td className="px-6 py-5">
-                              {formatMoney(
-                                payroll.allowances,
-                              )}
-                            </td>
-
-                            <td className="px-6 py-5">
-                              {formatMoney(
-                                payroll.deductions,
-                              )}
-                            </td>
-
-                            <td className="px-6 py-5 font-bold text-slate-900">
-                              {formatMoney(
-                                payroll.netSalary,
-                              )}
-                            </td>
-
-                            <td className="px-6 py-5">
-                              <span
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
-                                  payroll.status,
-                                )}`}
-                              >
-                                {payroll.status}
-                              </span>
-                            </td>
-
-                            <td className="px-6 py-5">
-                              {isSuperAdmin &&
-                                payroll.status ===
-                                  "DRAFT" && (
-                                  <button
-                                    type="button"
-                                    disabled={
-                                      processingId ===
-                                      payroll.id
-                                    }
-                                    onClick={() =>
-                                      void handleApprovePayroll(
-                                        payroll.id,
-                                      )
-                                    }
-                                    className="flex items-center gap-1 font-semibold text-blue-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    <Check
-                                      size={
-                                        16
-                                      }
-                                    />
-
-                                    {processingId ===
-                                    payroll.id
-                                      ? "Processing..."
-                                      : "Approve"}
-                                  </button>
-                                )}
-
-                              {isSuperAdmin &&
-                                payroll.status ===
-                                  "APPROVED" && (
-                                  <button
-                                    type="button"
-                                    disabled={
-                                      processingId ===
-                                      payroll.id
-                                    }
-                                    onClick={() =>
-                                      void handleMarkPaid(
-                                        payroll.id,
-                                      )
-                                    }
-                                    className="flex items-center gap-1 font-semibold text-emerald-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    <Banknote
-                                      size={
-                                        16
-                                      }
-                                    />
-
-                                    {processingId ===
-                                    payroll.id
-                                      ? "Processing..."
-                                      : "Mark Paid"}
-                                  </button>
-                                )}
-
-                              {payroll.status ===
-                                "PAID" && (
-                                <span className="font-medium text-emerald-700">
-                                  Completed
-                                </span>
-                              )}
-
-                              {payroll.status ===
-                                "CANCELLED" && (
-                                <span className="font-medium text-red-700">
-                                  Cancelled
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ),
-                      )}
-
-                      {filteredPayrolls.length ===
-                        0 && (
-                        <tr>
-                          <td
-                            colSpan={8}
-                            className="px-6 py-12 text-center text-slate-500"
-                          >
-                            No payroll records
-                            found.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            )}
-        </main>
-      </div>
-
-      {editingProfile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
-            <div className="flex justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  Edit Salary Profile
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  {getProfileEmployeeName(
-                    editingProfile,
-                  )}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={closeProfileEditor}
-                disabled={
-                  isUpdatingProfile
-                }
-                className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Close salary profile editor"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form
-              onSubmit={
-                handleUpdateSalaryProfile
-              }
-              className="mt-6"
-            >
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Basic salary
-              </label>
-
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                required
-                value={editBasicSalary}
-                onChange={(event) =>
-                  setEditBasicSalary(
-                    event.target.value,
-                  )
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black outline-none"
-              />
-
-              <label className="mb-2 mt-5 block text-sm font-medium text-slate-700">
-                Fixed allowance
-              </label>
-
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={editFixedAllowance}
-                onChange={(event) =>
-                  setEditFixedAllowance(
-                    event.target.value,
-                  )
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black outline-none"
-              />
-
-              <label className="mb-2 mt-5 block text-sm font-medium text-slate-700">
-                Fixed deduction
-              </label>
-
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={editFixedDeduction}
-                onChange={(event) =>
-                  setEditFixedDeduction(
-                    event.target.value,
-                  )
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black outline-none"
-              />
-
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={
-                    closeProfileEditor
-                  }
-                  disabled={
-                    isUpdatingProfile
-                  }
-                  className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={
-                    isUpdatingProfile
-                  }
-                  className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isUpdatingProfile
-                    ? "Saving..."
-                    : "Save Changes"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              )}
+            </>
+          )}
     </div>
   );
 }

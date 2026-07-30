@@ -1,26 +1,225 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand — deep teal (professional HR, not purple/cream AI defaults) */
+  --brand: #0c4a4e;
+  --brand-dark: #083538;
+  --brand-mid: #14686e;
+  --brand-soft: #e4f2f2;
+  --brand-glow: #1a8a7d;
+
+  --ink: #0f1c1e;
+  --ink-muted: #5b6b6e;
+  --ink-faint: #8a989b;
+
+  --canvas: #f0f4f5;
+  --canvas-deep: #e4ebed;
+  --surface: #ffffff;
+  --line: #d7e0e2;
+  --line-strong: #b8c5c8;
+
+  --success: #0f7a5a;
+  --success-soft: #e6f6f0;
+  --warning: #b45309;
+  --warning-soft: #fff7ed;
+  --danger: #c0392b;
+  --danger-soft: #fef2f0;
+
+  --background: var(--canvas);
+  --foreground: var(--ink);
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+
+  --shadow-card: 0 1px 2px rgb(15 28 30 / 4%),
+    0 8px 24px rgb(15 28 30 / 5%);
+  --shadow-elevated: 0 12px 40px rgb(12 74 78 / 12%);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-brand: var(--brand);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-mid: var(--brand-mid);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-glow: var(--brand-glow);
+  --color-ink: var(--ink);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --font-sans: var(--font-manrope), "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-source-serif), "Source Serif 4", Georgia, serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      1200px 600px at 12% -10%,
+      rgb(20 104 110 / 8%),
+      transparent 55%
+    ),
+    radial-gradient(
+      900px 500px at 100% 0%,
+      rgb(26 138 125 / 6%),
+      transparent 50%
+    ),
+    linear-gradient(180deg, var(--canvas) 0%, var(--canvas-deep) 100%);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01" on, "cv11" on;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+}
+
+/* Shared professional primitives — use across pages for consistency */
+.hr-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.hr-card-hover {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.hr-card-hover:hover {
+  transform: translateY(-2px);
+  border-color: rgb(12 74 78 / 18%);
+  box-shadow: var(--shadow-elevated);
+}
+
+.hr-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, var(--brand-mid) 0%, var(--brand) 100%);
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  box-shadow: 0 8px 20px rgb(12 74 78 / 22%);
+  transition:
+    filter 0.15s ease,
+    transform 0.15s ease;
+}
+
+.hr-btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+.hr-btn-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.hr-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: var(--ink);
+  transition: background 0.15s ease;
+}
+
+.hr-btn-secondary:hover {
+  background: var(--brand-soft);
+}
+
+.hr-input {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: 0.75rem 1rem;
+  color: var(--ink);
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.hr-input:focus {
+  border-color: var(--brand-mid);
+  box-shadow: 0 0 0 3px rgb(12 74 78 / 12%);
+}
+
+.hr-label {
+  margin-bottom: 0.5rem;
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(15 28 30 / 78%);
+}
+
+.hr-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* Lift common Tailwind slate primary CTAs toward brand without editing every page */
+button.bg-slate-900,
+a.bg-slate-900,
+.bg-slate-900:is(button, a) {
+  background-image: linear-gradient(180deg, var(--brand-mid) 0%, var(--brand) 100%) !important;
+  background-color: var(--brand) !important;
+  box-shadow: 0 6px 16px rgb(12 74 78 / 18%);
+}
+
+button.bg-slate-900:hover,
+a.bg-slate-900:hover {
+  filter: brightness(1.05);
+}
+
+.focus\:border-slate-900:focus {
+  border-color: var(--brand-mid) !important;
+  box-shadow: 0 0 0 3px rgb(12 74 78 / 10%);
+}
+
+/* Soften white cards site-wide */
+.rounded-2xl.bg-white,
+.rounded-xl.bg-white {
+  box-shadow: var(--shadow-card);
+}
+
+.border-slate-200 {
+  border-color: var(--line) !important;
+}
+
+.text-slate-900 {
+  color: var(--ink) !important;
 }

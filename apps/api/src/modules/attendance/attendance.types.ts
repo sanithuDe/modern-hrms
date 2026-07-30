@@ -1,7 +1,7 @@
 import type {
   AttendanceMethod,
   AttendanceStatus,
-} from "@prisma/client";
+} from "../../generated/prisma/client.js";
 
 export interface CheckInInput {
   method?: AttendanceMethod;

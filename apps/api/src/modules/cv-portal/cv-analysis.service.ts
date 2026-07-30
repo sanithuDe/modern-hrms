@@ -20,6 +20,10 @@ import {
     calculateLocalCandidateMatch,
 } from "./cv-matcher.service.js";
 
+import {
+    getCompanyPeerCompensation,
+} from "../../lib/peer-compensation.js";
+
 const fullAnalysisInclude = {
   candidate: {
     include: {
@@ -273,6 +277,9 @@ async function getCandidateForAnalysis(
 
             salaryMin: true,
             salaryMax: true,
+
+            departmentId: true,
+            positionId: true,
           },
         },
 
@@ -492,6 +499,17 @@ export async function analyzeCvSubmission(
         },
       });
 
+    const companyPeers =
+      await getCompanyPeerCompensation({
+        positionId:
+          candidate.jobOpening
+            .positionId,
+
+        departmentId:
+          candidate.jobOpening
+            .departmentId,
+      });
+
     const aiAnalysis =
       await analyzeCandidateWithGemini({
         candidate: {
@@ -552,6 +570,7 @@ export async function analyzeCvSubmission(
         },
 
         localAnalysis,
+        companyPeers,
       });
 
     const finalMatchScore =

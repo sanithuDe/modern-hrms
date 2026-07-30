@@ -151,6 +151,37 @@ function cleanOptionalString(
     : null;
 }
 
+function splitCandidateName(
+  fullName: string,
+): {
+  firstName: string;
+  lastName: string;
+} {
+  const parts = fullName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return {
+      firstName: "Candidate",
+      lastName: "-",
+    };
+  }
+
+  if (parts.length === 1) {
+    return {
+      firstName: parts[0],
+      lastName: "-",
+    };
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" "),
+  };
+}
+
 function createStoredResumeUrl(
   storedFileName: string,
 ): string {
@@ -341,6 +372,8 @@ export async function createMyCvSubmission(
           id: true,
           status: true,
           applicationDeadline: true,
+          numberOfVacancies: true,
+          title: true,
         },
       });
 
@@ -369,36 +402,49 @@ export async function createMyCvSubmission(
       );
     }
 
-    const existingSubmission =
-      await prisma.candidate.findFirst({
+    const activeApplicationCount =
+      await prisma.candidate.count({
         where: {
           jobOpeningId:
             input.jobOpeningId,
-
-          submittedByEmployeeId:
-            employee.id,
-
-          isSelfSubmitted:
-            true,
 
           stage: {
             not:
               CandidateStage.WITHDRAWN,
           },
         },
-
-        select: {
-          id: true,
-        },
       });
 
     if (
-      existingSubmission
+      activeApplicationCount >=
+      jobOpening.numberOfVacancies
     ) {
       throw new Error(
-        "You already submitted a CV for this job opening",
+        `All ${jobOpening.numberOfVacancies} vacancy slot(s) for "${jobOpening.title}" are already filled. Other employees cannot submit more CVs for this job.`,
       );
     }
+
+    const candidateDisplayName =
+      cleanOptionalString(
+        input.candidateName,
+      ) ??
+      cleanOptionalString(
+        input.currentCompany,
+      );
+
+    if (!candidateDisplayName) {
+      throw new Error(
+        "Candidate name is required",
+      );
+    }
+
+    const {
+      firstName,
+      lastName,
+    } =
+      splitCandidateName(
+        candidateDisplayName,
+      );
 
     const extractionResult =
       await extractCvText({
@@ -435,11 +481,8 @@ export async function createMyCvSubmission(
           const createdCandidate =
             await transaction.candidate.create({
               data: {
-                firstName:
-                  employee.firstName.trim(),
-
-                lastName:
-                  employee.lastName.trim(),
+                firstName,
+                lastName,
 
                 email:
                   candidateEmail
@@ -458,9 +501,7 @@ export async function createMyCvSubmission(
                   ),
 
                 currentCompany:
-                  cleanOptionalString(
-                    input.currentCompany,
-                  ),
+                  candidateDisplayName,
 
                 yearsOfExperience:
                   input.yearsOfExperience,
@@ -527,7 +568,7 @@ export async function createMyCvSubmission(
                 extractionResult.text,
 
               extractedName:
-                `${employee.firstName} ${employee.lastName}`,
+                candidateDisplayName,
 
               extractedEmail:
                 candidateEmail

@@ -52,6 +52,8 @@ export interface CreateEmployeeInput {
   hireDate: string;
   departmentId?: string | null;
   positionId?: string | null;
+  departmentName?: string | null;
+  positionTitle?: string | null;
 }
 
 export interface UpdateEmployeeInput {
@@ -61,6 +63,8 @@ export interface UpdateEmployeeInput {
   hireDate?: string;
   departmentId?: string | null;
   positionId?: string | null;
+  departmentName?: string | null;
+  positionTitle?: string | null;
   role?: UserRole;
 }
 

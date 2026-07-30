@@ -22,8 +22,6 @@ import {
 } from "react";
 
 
-import Sidebar from "../../../src/components/layout/sidebar";
-
 import {
     getEmployees,
     type Employee,
@@ -1160,12 +1158,7 @@ export default function LeavePage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      <Sidebar role={user.role} />
-
-      <div className="flex min-w-0 flex-1 flex-col">
-
-        <main className="flex-1 p-8">
+    <div className="space-y-6">
           <h1 className="text-3xl font-bold text-slate-900">
             Leave Management
           </h1>
@@ -1538,31 +1531,31 @@ export default function LeavePage() {
 
                         <div className="mt-5 grid grid-cols-3 gap-3 text-center">
                           <div>
-                            <p className="text-xl font-bold">
+                            <p className="text-2xl font-bold text-slate-900">
                               {allocated}
                             </p>
 
-                            <p className="text-xs text-slate-500">
+                            <p className="mt-1 text-xs font-medium text-slate-600">
                               Allocated
                             </p>
                           </div>
 
                           <div>
-                            <p className="text-xl font-bold">
+                            <p className="text-2xl font-bold text-sky-700">
                               {used}
                             </p>
 
-                            <p className="text-xs text-slate-500">
+                            <p className="mt-1 text-xs font-medium text-slate-600">
                               Used
                             </p>
                           </div>
 
                           <div>
-                            <p className="text-xl font-bold text-emerald-600">
+                            <p className="text-2xl font-bold text-emerald-700">
                               {remaining}
                             </p>
 
-                            <p className="text-xs text-slate-500">
+                            <p className="mt-1 text-xs font-medium text-slate-600">
                               Remaining
                             </p>
                           </div>
@@ -2123,15 +2116,15 @@ export default function LeavePage() {
                                   }
                                 </td>
 
-                                <td className="px-6 py-5">
+                                <td className="px-6 py-5 text-base font-bold text-slate-900">
                                   {allocated}
                                 </td>
 
-                                <td className="px-6 py-5">
+                                <td className="px-6 py-5 text-base font-bold text-sky-700">
                                   {used}
                                 </td>
 
-                                <td className="px-6 py-5 font-semibold text-emerald-700">
+                                <td className="px-6 py-5 text-base font-bold text-emerald-700">
                                   {allocated -
                                     used}
                                 </td>
@@ -2430,8 +2423,6 @@ export default function LeavePage() {
                 </div>
               </section>
             )}
-        </main>
-      </div>
 
       {editingType && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">

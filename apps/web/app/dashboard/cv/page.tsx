@@ -37,6 +37,7 @@ import {
     reanalyzeCvSubmission,
     withdrawMyCvSubmission,
     type CandidateRankingItem,
+    type CandidateStage,
     type CvAnalysis,
     type CvAnalysisStatus,
     type CvPortalJob,
@@ -44,6 +45,17 @@ import {
     type HrCvSubmission,
     type JobCandidateRanking,
 } from "../../../src/services/cv-portal.service";
+import { updateCandidateStage } from "../../../src/services/recruitment.service";
+
+const HIRING_STAGES: CandidateStage[] = [
+  "APPLIED",
+  "SCREENING",
+  "INTERVIEW",
+  "OFFERED",
+  "HIRED",
+  "REJECTED",
+  "WITHDRAWN",
+];
 
 interface StoredUser {
   email: string;
@@ -54,7 +66,7 @@ interface EmployeeSubmissionForm {
   jobOpeningId: string;
   yearsOfExperience: string;
   currentJobTitle: string;
-  currentCompany: string;
+  candidateName: string;
   phone: string;
   linkedInUrl: string;
   portfolioUrl: string;
@@ -65,7 +77,7 @@ const initialEmployeeForm: EmployeeSubmissionForm = {
   jobOpeningId: "",
   yearsOfExperience: "0",
   currentJobTitle: "",
-  currentCompany: "",
+  candidateName: "",
   phone: "",
   linkedInUrl: "",
   portfolioUrl: "",
@@ -362,6 +374,14 @@ function EmployeeCvPortal() {
       return;
     }
 
+    if (!form.candidateName.trim()) {
+      setError(
+        "Please enter the candidate name.",
+      );
+
+      return;
+    }
+
     try {
       setSubmitting(true);
       setError("");
@@ -379,8 +399,8 @@ function EmployeeCvPortal() {
         currentJobTitle:
           form.currentJobTitle,
 
-        currentCompany:
-          form.currentCompany,
+        candidateName:
+          form.candidateName.trim(),
 
         phone:
           form.phone,
@@ -542,6 +562,7 @@ function EmployeeCvPortal() {
                   {job.location
                     ? ` — ${job.location}`
                     : ""}
+                  {` (${job.numberOfVacancies} vacancy${job.numberOfVacancies === 1 ? "" : "s"})`}
                 </option>
               ))}
             </select>
@@ -594,21 +615,22 @@ function EmployeeCvPortal() {
 
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
-              Current company
+              Candidate name
             </label>
 
             <input
               type="text"
               value={
-                form.currentCompany
+                form.candidateName
               }
               onChange={(event) =>
                 updateForm(
-                  "currentCompany",
+                  "candidateName",
                   event.target.value,
                 )
               }
-              placeholder="Company name"
+              placeholder="Candidate full name"
+              required
               className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
             />
           </div>
@@ -928,6 +950,18 @@ function HrCvPortal({
   ] =
     useState("");
 
+  const [
+    rankingStageFilter,
+    setRankingStageFilter,
+  ] =
+    useState<CandidateStage | "">("");
+
+  const [
+    updatingStageId,
+    setUpdatingStageId,
+  ] =
+    useState<string | null>(null);
+
   const [ranking, setRanking] =
     useState<JobCandidateRanking | null>(
       null,
@@ -1136,6 +1170,95 @@ function HrCvPortal({
   useEffect(() => {
     void handleRanking();
   }, [selectedJobId]);
+
+  const filteredRankedCandidates =
+    useMemo(() => {
+      const candidates =
+        ranking?.rankedCandidates ??
+        [];
+
+      if (!rankingStageFilter) {
+        return candidates;
+      }
+
+      return candidates.filter(
+        (item) =>
+          item.stage ===
+          rankingStageFilter,
+      );
+    }, [
+      ranking,
+      rankingStageFilter,
+    ]);
+
+  async function handleStageChange(
+    candidateId: string,
+    stage: CandidateStage,
+  ): Promise<void> {
+    try {
+      setUpdatingStageId(
+        candidateId,
+      );
+      setError("");
+      setSuccess("");
+
+      await updateCandidateStage(
+        candidateId,
+        stage,
+      );
+
+      setSuccess(
+        `Candidate stage updated to ${humanize(stage)}.`,
+      );
+
+      setSubmissions(
+        (current) =>
+          current.map(
+            (item) =>
+              item.id ===
+              candidateId
+                ? {
+                    ...item,
+                    stage,
+                  }
+                : item,
+          ),
+      );
+
+      setRanking(
+        (current) => {
+          if (!current) {
+            return current;
+          }
+
+          return {
+            ...current,
+            rankedCandidates:
+              current.rankedCandidates.map(
+                (item) =>
+                  item.candidateId ===
+                  candidateId
+                    ? {
+                        ...item,
+                        stage,
+                      }
+                    : item,
+              ),
+          };
+        },
+      );
+    } catch (stageError) {
+      setError(
+        getErrorMessage(
+          stageError,
+        ),
+      );
+    } finally {
+      setUpdatingStageId(
+        null,
+      );
+    }
+  }
 
   async function handleDelete(
     submissionId: string,
@@ -1352,15 +1475,47 @@ function HrCvPortal({
                           </td>
 
                           <td className="px-5 py-4">
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs font-semibold ${getStageClasses(
+                            <select
+                              value={
+                                submission.stage
+                              }
+                              disabled={
+                                updatingStageId ===
+                                submission.id
+                              }
+                              onChange={(
+                                event,
+                              ) =>
+                                void handleStageChange(
+                                  submission.id,
+                                  event
+                                    .target
+                                    .value as CandidateStage,
+                                )
+                              }
+                              className={`rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-slate-900 disabled:opacity-50 ${getStageClasses(
                                 submission.stage,
                               )}`}
                             >
-                              {humanize(
-                                submission.stage,
+                              {HIRING_STAGES.map(
+                                (
+                                  stage,
+                                ) => (
+                                  <option
+                                    key={
+                                      stage
+                                    }
+                                    value={
+                                      stage
+                                    }
+                                  >
+                                    {humanize(
+                                      stage,
+                                    )}
+                                  </option>
+                                ),
                               )}
-                            </span>
+                            </select>
                           </td>
 
                           <td className="px-5 py-4">
@@ -1522,37 +1677,176 @@ function HrCvPortal({
       </section>
 
       <section className="space-y-4 rounded-2xl bg-white p-6 shadow-sm">
-  <div>
-    <h2 className="text-xl font-semibold text-slate-900">
-      Candidate ranking
-    </h2>
+        <div>
+          <h2 className="text-xl font-semibold text-slate-900">
+            Candidate ranking
+          </h2>
 
-    <p className="mt-1 text-sm text-slate-600">
-      Select a job to rank completed candidates by final match score.
-    </p>
-  </div>
+          <p className="mt-1 text-sm text-slate-600">
+            Select a job to rank completed candidates by AI final match score.
+            Use the stage dropdown to filter or update hiring status (Applied, Interview, Hired, Rejected, etc.).
+          </p>
+        </div>
 
-  <select
-    value={selectedJobId}
-    onChange={(event) =>
-      setSelectedJobId(event.target.value)
-    }
-    className="w-full max-w-xl rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
-  >
-    <option value="">
-      Select a job opening
-    </option>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Job opening
+            </label>
+            <select
+              value={selectedJobId}
+              onChange={(event) =>
+                setSelectedJobId(event.target.value)
+              }
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-slate-900"
+            >
+              <option value="">
+                Select a job opening
+              </option>
 
-    {jobs.map((job) => (
-      <option
-        key={job.id}
-        value={job.id}
-      >
-        {job.title}
-      </option>
-    ))}
-  </select>
-</section>
+              {jobs.map((job) => (
+                <option
+                  key={job.id}
+                  value={job.id}
+                >
+                  {job.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Hiring stage
+            </label>
+            <select
+              value={rankingStageFilter}
+              onChange={(event) =>
+                setRankingStageFilter(
+                  event.target.value as CandidateStage | "",
+                )
+              }
+              disabled={!selectedJobId}
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-slate-900 disabled:bg-slate-50 disabled:opacity-60"
+            >
+              <option value="">
+                All stages
+              </option>
+              {HIRING_STAGES.map((stage) => (
+                <option
+                  key={stage}
+                  value={stage}
+                >
+                  {humanize(stage)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {!selectedJobId ? (
+          <p className="text-sm text-slate-500">
+            Choose a job opening to see ranked candidates.
+          </p>
+        ) : loadingRanking ? (
+          <LoadingState text="Loading candidate ranking..." />
+        ) : filteredRankedCandidates.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            No ranked candidates
+            {rankingStageFilter
+              ? ` in ${humanize(rankingStageFilter)}`
+              : ""}
+            {" "}for this job yet. Analyze CVs first to generate match scores.
+          </p>
+        ) : (
+          <div className="overflow-hidden rounded-2xl border border-slate-200">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    {[
+                      "Rank",
+                      "Candidate",
+                      "Score",
+                      "Recommendation",
+                      "Hiring stage",
+                    ].map((heading) => (
+                      <th
+                        key={heading}
+                        className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                      >
+                        {heading}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {filteredRankedCandidates.map((item) => (
+                    <tr
+                      key={item.candidateId}
+                      className="hover:bg-slate-50"
+                    >
+                      <td className="px-5 py-4 text-sm font-bold text-slate-900">
+                        #{item.rank}
+                      </td>
+                      <td className="px-5 py-4">
+                        <p className="font-semibold text-slate-900">
+                          {item.candidateName}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {item.email}
+                        </p>
+                      </td>
+                      <td className="px-5 py-4 text-sm font-bold text-slate-900">
+                        {item.analysis?.finalMatchScore != null
+                          ? `${formatScore(item.analysis.finalMatchScore)}%`
+                          : "—"}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${getRecommendationClasses(
+                            item.analysis?.recommendation ?? null,
+                          )}`}
+                        >
+                          {item.analysis?.recommendation
+                            ? humanize(item.analysis.recommendation)
+                            : "Not available"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <select
+                          value={item.stage}
+                          disabled={
+                            updatingStageId === item.candidateId
+                          }
+                          onChange={(event) =>
+                            void handleStageChange(
+                              item.candidateId,
+                              event.target.value as CandidateStage,
+                            )
+                          }
+                          className={`rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-slate-900 disabled:opacity-50 ${getStageClasses(
+                            item.stage,
+                          )}`}
+                        >
+                          {HIRING_STAGES.map((stage) => (
+                            <option
+                              key={stage}
+                              value={stage}
+                            >
+                              {humanize(stage)}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </section>
 
       {selectedSubmission ? (
         <AnalysisModal
@@ -2126,6 +2420,11 @@ export default function CvPortalPage() {
           storedUser,
         ) as StoredUser;
 
+      if (parsedUser.role === "EMPLOYEE") {
+        window.location.replace("/dashboard/cv-portal");
+        return;
+      }
+
       setUser(parsedUser);
     } catch {
       setError(
@@ -2151,16 +2450,9 @@ export default function CvPortalPage() {
     );
   }
 
-  if (
-    user.role ===
-    "EMPLOYEE"
-  ) {
-    return <EmployeeCvPortal />;
-  }
-
   return (
     <HrCvPortal
-      role={user.role}
+      role={user.role as "SUPER_ADMIN" | "HR_MANAGER"}
     />
   );
 }

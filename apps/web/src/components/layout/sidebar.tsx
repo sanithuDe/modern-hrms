@@ -1,390 +1,231 @@
 "use client";
 
 import {
-  Bell,
-  BriefcaseBusiness,
-  Building2,
-  CalendarDays,
-  ChartNoAxesCombined,
-  FileSearch,
-  FileText,
-  LayoutDashboard,
-  LogOut,
-  Settings,
-  UserRound,
-  Users,
-  WalletCards,
+    BarChart3,
+    Bell,
+    CalendarCheck,
+    CalendarClock,
+    CircleDollarSign,
+    FileSearch,
+    LayoutDashboard,
+    LogOut,
+    UserRound,
+    Users,
 } from "lucide-react";
-
-import type {
-  ComponentType,
-} from "react";
+import Image from "next/image";
 
 import Link from "next/link";
 
 import {
-  usePathname,
-  useRouter,
+    usePathname,
+    useRouter,
 } from "next/navigation";
-
-type UserRole =
-  | "SUPER_ADMIN"
-  | "HR_MANAGER"
-  | "EMPLOYEE";
 
 interface SidebarProps {
   role: string;
 }
 
-interface SidebarLink {
+interface NavigationItem {
   label: string;
   href: string;
-
-  icon: ComponentType<{
-    size?: number;
-    strokeWidth?: number;
-    className?: string;
-  }>;
+  icon: typeof LayoutDashboard;
+  roles: string[];
 }
 
-const dashboardLink: SidebarLink =
+const navigationItems: NavigationItem[] = [
   {
     label: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
-  };
-
-const employeesLink: SidebarLink =
+    roles: ["SUPER_ADMIN", "HR_MANAGER", "EMPLOYEE"],
+  },
   {
     label: "Employees",
-    href:
-      "/dashboard/employees",
+    href: "/dashboard/employees",
     icon: Users,
-  };
-
-const departmentsLink: SidebarLink =
+    roles: ["SUPER_ADMIN", "HR_MANAGER"],
+  },
   {
-    label: "Departments",
-    href:
-      "/dashboard/departments",
-    icon: Building2,
-  };
-
-const positionsLink: SidebarLink =
-  {
-    label: "Positions",
-    href:
-      "/dashboard/positions",
-    icon:
-      BriefcaseBusiness,
-  };
-
-const payrollLink: SidebarLink =
+    label: "Shift Assignments",
+    href: "/dashboard/shift-assignments",
+    icon: CalendarClock,
+    roles: ["SUPER_ADMIN", "HR_MANAGER"],
+  },
   {
     label: "Payroll",
-    href:
-      "/dashboard/payroll",
-    icon: WalletCards,
-  };
-
-const leaveLink: SidebarLink =
+    href: "/dashboard/payroll",
+    icon: CircleDollarSign,
+    roles: ["SUPER_ADMIN", "HR_MANAGER"],
+  },
+  {
+    label: "My Payroll",
+    href: "/dashboard/payroll",
+    icon: CircleDollarSign,
+    roles: ["EMPLOYEE"],
+  },
   {
     label: "Leave",
-    href:
-      "/dashboard/leave",
-    icon: CalendarDays,
-  };
-
-const attendanceLink: SidebarLink =
+    href: "/dashboard/leave",
+    icon: CalendarCheck,
+    roles: ["SUPER_ADMIN", "HR_MANAGER", "EMPLOYEE"],
+  },
   {
     label: "Attendance",
-    href:
-      "/dashboard/attendance",
+    href: "/dashboard/attendance",
     icon: UserRound,
-  };
-
-const performanceLink: SidebarLink =
+    roles: ["SUPER_ADMIN", "HR_MANAGER", "EMPLOYEE"],
+  },
   {
     label: "Performance",
-    href:
-      "/dashboard/performance",
-    icon:
-      ChartNoAxesCombined,
-  };
-
-const announcementsLink: SidebarLink =
+    href: "/dashboard/performance",
+    icon: BarChart3,
+    roles: ["SUPER_ADMIN", "HR_MANAGER", "EMPLOYEE"],
+  },
   {
-    label:
-      "Announcements",
-    href:
-      "/dashboard/announcements",
+    label: "Announcements",
+    href: "/dashboard/announcements",
     icon: Bell,
-  };
-
-const recruitmentLink: SidebarLink =
+    roles: ["SUPER_ADMIN", "HR_MANAGER", "EMPLOYEE"],
+  },
   {
-    label:
-      "Recruitment",
-    href:
-      "/dashboard/recruitment",
-    icon: FileText,
-  };
-
-const cvPortalLink: SidebarLink =
+    label: "Recruitment",
+    href: "/dashboard/recruitment",
+    icon: FileSearch,
+    roles: ["SUPER_ADMIN", "HR_MANAGER"],
+  },
   {
     label: "CV Portal",
-    href:
-      "/dashboard/cv",
+    href: "/dashboard/cv",
     icon: FileSearch,
-  };
+    roles: ["SUPER_ADMIN", "HR_MANAGER", "EMPLOYEE"],
+  },
+];
 
-const settingsLink: SidebarLink =
-  {
-    label: "Settings",
-    href:
-      "/dashboard/settings",
-    icon: Settings,
-  };
-
-const superAdminLinks: SidebarLink[] =
-  [
-    dashboardLink,
-    employeesLink,
-    departmentsLink,
-    positionsLink,
-    payrollLink,
-    leaveLink,
-    attendanceLink,
-    performanceLink,
-    announcementsLink,
-    recruitmentLink,
-    cvPortalLink,
-    settingsLink,
-  ];
-
-const hrManagerLinks: SidebarLink[] =
-  [
-    dashboardLink,
-    employeesLink,
-    departmentsLink,
-    positionsLink,
-    payrollLink,
-    leaveLink,
-    attendanceLink,
-    performanceLink,
-    announcementsLink,
-    recruitmentLink,
-    cvPortalLink,
-  ];
-
-const employeeLinks: SidebarLink[] =
-  [
-    dashboardLink,
-
-    {
-      label: "My Payroll",
-      href:
-        "/dashboard/payroll",
-      icon: WalletCards,
-    },
-
-    {
-      label: "My Leave",
-      href:
-        "/dashboard/leave",
-      icon: CalendarDays,
-    },
-
-    {
-      label:
-        "My Attendance",
-      href:
-        "/dashboard/attendance",
-      icon: UserRound,
-    },
-
-    {
-      label:
-        "My Performance",
-      href:
-        "/dashboard/performance",
-      icon:
-        ChartNoAxesCombined,
-    },
-
-    announcementsLink,
-    cvPortalLink,
-  ];
-
-function normalizeRole(
-  role: string,
-): UserRole {
-  if (
-    role ===
-    "SUPER_ADMIN"
-  ) {
-    return "SUPER_ADMIN";
-  }
-
-  if (
-    role ===
-    "HR_MANAGER"
-  ) {
-    return "HR_MANAGER";
-  }
-
-  return "EMPLOYEE";
+function normalizeRole(role: string): string {
+  return role.trim().toUpperCase();
 }
 
-function getLinksByRole(
-  role: string,
-): SidebarLink[] {
-  const normalizedRole =
-    normalizeRole(
-      role,
-    );
-
-  if (
-    normalizedRole ===
-    "SUPER_ADMIN"
-  ) {
-    return superAdminLinks;
+function isActivePath(pathname: string, href: string): boolean {
+  if (href === "/dashboard") {
+    return pathname === href;
   }
 
-  if (
-    normalizedRole ===
-    "HR_MANAGER"
-  ) {
-    return hrManagerLinks;
-  }
-
-  return employeeLinks;
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export default function Sidebar({
-  role,
-}: SidebarProps) {
-  const router =
-    useRouter();
+function cvPortalHref(role: string): string {
+  return normalizeRole(role) === "EMPLOYEE"
+    ? "/dashboard/cv-portal"
+    : "/dashboard/cv";
+}
 
-  const pathname =
-    usePathname();
+function isCvPortalActive(pathname: string): boolean {
+  return (
+    pathname.startsWith("/dashboard/cv-portal") ||
+    pathname.startsWith("/dashboard/cv")
+  );
+}
 
-  const links =
-    getLinksByRole(
-      role,
-    );
+export default function Sidebar({ role }: SidebarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const normalizedRole = normalizeRole(role);
+
+  const visibleItems = navigationItems.filter((item) =>
+    item.roles.includes(normalizedRole),
+  );
 
   function handleLogout(): void {
-    window.localStorage.removeItem(
-      "accessToken",
-    );
-
-    window.localStorage.removeItem(
-      "authUser",
-    );
-
-    router.replace(
-      "/login",
-    );
-  }
-
-  function isActive(
-    href: string,
-  ): boolean {
-    if (
-      href === "/dashboard"
-    ) {
-      return (
-        pathname ===
-        "/dashboard"
-      );
-    }
-
-    return (
-      pathname === href ||
-      pathname.startsWith(
-        `${href}/`,
-      )
-    );
+    window.localStorage.removeItem("accessToken");
+    window.localStorage.removeItem("authUser");
+    router.replace("/login");
+    router.refresh();
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-slate-950 text-white lg:flex">
-      <div className="border-b border-slate-800 px-6 py-6">
-        <h1 className="text-2xl font-bold">
-          HR Platform
-        </h1>
-
-        <p className="mt-1 text-xs text-slate-400">
-          Human Resource
-          Management
-        </p>
+    <aside className="sticky top-0 z-40 flex h-screen w-[248px] shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[linear-gradient(180deg,#083538_0%,#0c4a4e_48%,#0a3d40_100%)] text-white shadow-[8px_0_32px_rgb(8_53_56/18%)]">
+      <div className="relative border-b border-white/10 px-5 py-6">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgb(26_138_125/35%),transparent_55%)]" />
+        <Link href="/dashboard" className="relative block">
+          <Image
+            src="/wrdn-option-c.png"
+            alt="WRDN HR System"
+            width={360}
+            height={108}
+            priority
+            className="h-auto w-[190px] max-w-full"
+          />
+        </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-5">
-        <div className="space-y-1">
-          {links.map(
-            (item) => {
-              const Icon =
-                item.icon;
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        {visibleItems.map((item) => {
+          const Icon = item.icon;
+          const href =
+            item.label === "CV Portal"
+              ? cvPortalHref(normalizedRole)
+              : item.href;
+          const active =
+            item.label === "CV Portal"
+              ? isCvPortalActive(pathname)
+              : isActivePath(pathname, href);
 
-              const active =
-                isActive(
-                  item.href,
-                );
-
-              return (
-                <Link
-                  key={
-                    item.href
-                  }
-                  href={
-                    item.href
-                  }
-                  className={
-                    active
-                      ? "flex items-center gap-3 rounded-lg bg-slate-800 px-3 py-3 text-sm font-semibold text-white"
-                      : "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white"
-                  }
-                >
-                  <Icon
-                    size={18}
-                    strokeWidth={
-                      1.8
-                    }
-                  />
-
-                  <span>
-                    {
-                      item.label
-                    }
-                  </span>
-                </Link>
-              );
-            },
-          )}
-        </div>
+          return (
+            <Link
+              key={`${item.href}-${item.label}`}
+              href={href}
+              className={[
+                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200",
+                active
+                  ? "bg-white text-[var(--brand-dark)] shadow-lg shadow-black/10"
+                  : "text-teal-50/80 hover:bg-white/10 hover:text-white",
+              ].join(" ")}
+            >
+              <span
+                className={[
+                  "flex h-8 w-8 items-center justify-center rounded-lg transition",
+                  active
+                    ? "bg-[var(--brand-soft)] text-[var(--brand)]"
+                    : "bg-white/5 text-teal-100/80 group-hover:bg-white/10",
+                ].join(" ")}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+              </span>
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
-      <div className="border-t border-slate-800 p-3">
+      <div className="border-t border-white/10 p-3">
+        <div className="mb-2 space-y-1 px-3">
+          <Link
+            href="/contact-us"
+            className="block text-xs text-teal-100/60 transition hover:text-white"
+          >
+            Contact Us
+          </Link>
+          <Link
+            href="/privacy-policy"
+            className="block text-xs text-teal-100/60 transition hover:text-white"
+          >
+            Privacy Policy
+          </Link>
+          <Link
+            href="/terms-and-conditions"
+            className="block text-xs text-teal-100/60 transition hover:text-white"
+          >
+            Terms &amp; Conditions
+          </Link>
+        </div>
+
         <button
           type="button"
-          onClick={
-            handleLogout
-          }
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-red-300 transition hover:bg-red-950 hover:text-red-200"
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/15 hover:text-rose-100"
         >
-          <LogOut
-            size={18}
-            strokeWidth={
-              1.8
-            }
-          />
-
-          <span>
-            Logout
-          </span>
+          <LogOut className="h-4 w-4 shrink-0" />
+          <span>Logout</span>
         </button>
       </div>
     </aside>

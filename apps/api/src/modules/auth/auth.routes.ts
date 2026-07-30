@@ -1,42 +1,39 @@
-import {
-  Router,
-} from "express";
+import { Router } from "express";
 
+import { authenticate } from "../../middleware/authenticate.js";
+import { authorizeRoles } from "../../middleware/authorizeRoles.js";
+import { validateRequest } from "../../middleware/validateRequest.js";
 import {
-  UserRole,
-} from "../../generated/prisma/client.js";
-
-import {
-  authenticate,
-} from "../../middleware/authenticate.js";
-
-import {
-  authorizeRoles,
-} from "../../middleware/authorizeRoles.js";
-
-import {
-  validateRequest,
-} from "../../middleware/validateRequest.js";
-
-import {
+  forgotPasswordController,
   loginController,
   logoutController,
   meController,
+  resetPasswordController,
 } from "./auth.controller.js";
-
 import {
+  forgotPasswordSchema,
   loginSchema,
+  resetPasswordSchema,
 } from "./auth.schema.js";
 
-const authRouter =
-  Router();
+const authRouter = Router();
 
 authRouter.post(
   "/login",
-  validateRequest(
-    loginSchema,
-  ),
+  validateRequest(loginSchema),
   loginController,
+);
+
+authRouter.post(
+  "/forgot-password",
+  validateRequest(forgotPasswordSchema),
+  forgotPasswordController,
+);
+
+authRouter.post(
+  "/reset-password",
+  validateRequest(resetPasswordSchema),
+  resetPasswordController,
 );
 
 authRouter.get(
@@ -52,38 +49,13 @@ authRouter.post(
 );
 
 authRouter.get(
-  "/super-admin-test",
+  "/admin-test",
   authenticate,
-  authorizeRoles(
-    UserRole.SUPER_ADMIN,
-  ),
-  (
-    _request,
-    response,
-  ) => {
+  authorizeRoles("SUPER_ADMIN"),
+  (_request, response) => {
     response.status(200).json({
       success: true,
-      message:
-        "Super Admin authorization is working",
-    });
-  },
-);
-
-authRouter.get(
-  "/hr-manager-test",
-  authenticate,
-  authorizeRoles(
-    UserRole.SUPER_ADMIN,
-    UserRole.HR_MANAGER,
-  ),
-  (
-    _request,
-    response,
-  ) => {
-    response.status(200).json({
-      success: true,
-      message:
-        "HR Manager authorization is working",
+      message: "Super Admin authorization is working",
     });
   },
 );

@@ -27,9 +27,6 @@ import {
   type ReactNode,
 } from "react";
 
-import Header from "../../../../src/components/layout/header";
-import Sidebar from "../../../../src/components/layout/sidebar";
-
 import {
   deleteEmployee,
   getEmployeeById,
@@ -417,17 +414,7 @@ export default function EmployeeDetailsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      <Sidebar role={user.role} />
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Header
-          email={user.email}
-          role={user.role}
-        />
-
-        <main className="flex-1 p-8">
-          <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl space-y-6">
             <Link
               href="/dashboard/employees"
               className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
@@ -710,10 +697,6 @@ export default function EmployeeDetailsPage() {
                   </div>
                 </>
               )}
-          </div>
-        </main>
-      </div>
-
       {pendingStatus &&
         employee &&
         canManageEmployee && (

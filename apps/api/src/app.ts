@@ -2,9 +2,7 @@ import cors from "cors";
 import express from "express";
 import morgan from "morgan";
 
-import {
-  errorHandler,
-} from "./middleware/errorHandler.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 import {
   notFoundHandler,
@@ -13,6 +11,7 @@ import {
 import announcementRoutes from "./modules/announcements/announcement.routes.js";
 import attendanceRoutes from "./modules/attendance/attendance.routes.js";
 import authRoutes from "./modules/auth/auth.routes.js";
+import contactRouter from "./modules/contact/contact.routes.js";
 import cvPortalRoutes from "./modules/cv-portal/cv-portal.routes.js";
 import departmentRoutes from "./modules/departments/department.routes.js";
 import employeeRoutes from "./modules/employees/employee.routes.js";
@@ -22,6 +21,7 @@ import performanceRoutes from "./modules/performance/performance.routes.js";
 import positionRoutes from "./modules/positions/position.routes.js";
 import recruitmentRoutes from "./modules/recruitment/recruitment.routes.js";
 import settingsRoutes from "./modules/settings/settings.routes.js";
+import shiftRoutes from "./modules/shifts/shift.routes.js";
 
 const app =
   express();
@@ -82,6 +82,10 @@ app.use(
 );
 
 app.use(
+  "/api/contact",
+  contactRouter,
+);
+app.use(
   "/api/departments",
   departmentRoutes,
 );
@@ -134,6 +138,11 @@ app.use(
 app.use(
   "/api/cv-portal",
   cvPortalRoutes,
+);
+
+app.use(
+  "/api/shifts",
+  shiftRoutes,
 );
 
 app.use(
