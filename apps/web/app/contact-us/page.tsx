@@ -88,7 +88,7 @@ export default function ContactUsPage() {
               width={360}
               height={108}
               priority
-              className="h-auto w-[150px] sm:w-[170px]"
+              className="h-auto w-[190px] sm:w-[220px]"
             />
           </Link>
 

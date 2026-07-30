@@ -338,19 +338,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-[24px] border border-[var(--line)] bg-[linear-gradient(135deg,#083538_0%,#0c4a4e_45%,#14686e_100%)] p-8 text-white shadow-[var(--shadow-elevated)]">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-teal-200/20 blur-2xl" />
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-100/70">
-          Overview
-        </p>
-        <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight sm:text-4xl">
-          Your HR command center
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-teal-50/85">
-          Review the latest people activity across attendance, leave, payroll, and hiring — all in one place.
-        </p>
-      </section>
-
       {error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}

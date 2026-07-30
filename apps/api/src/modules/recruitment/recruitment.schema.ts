@@ -33,6 +33,21 @@ const optionalStringSchema = z
   ])
   .optional();
 
+const optionalPhoneSchema = z
+  .union([
+    z
+      .string()
+      .trim()
+      .regex(
+        /^\d{0,15}$/,
+        "Phone number must contain digits only",
+      )
+      .max(15),
+    z.literal(""),
+    z.null(),
+  ])
+  .optional();
+
 const optionalIdSchema = z
   .union([
     z.string().trim().min(1),
@@ -263,7 +278,7 @@ const candidateFieldsSchema =
       ),
 
     phone:
-      optionalStringSchema,
+      optionalPhoneSchema,
 
     currentJobTitle:
       optionalStringSchema,

@@ -15,6 +15,7 @@ import {
   createEmployee,
   type UserRole,
 } from "../../../../src/services/employee.service";
+import { sanitizePhoneDigits } from "../../../../src/lib/phone";
 
 type CreatableUserRole = Exclude<
   UserRole,
@@ -275,20 +276,9 @@ export default function AddEmployeePage() {
               Back to employees
             </Link>
 
-            <div className="mt-5">
-              <h1 className="text-3xl font-bold text-slate-900">
-                Add Employee
-              </h1>
-
-              <p className="mt-2 text-slate-600">
-                Create a user account and
-                employee profile.
-              </p>
-            </div>
-
             <form
               onSubmit={handleSubmit}
-              className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+              className="mt-6 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
             >
               {error && (
                 <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -503,11 +493,16 @@ export default function AddEmployeePage() {
                     <input
                       id="phone"
                       type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel"
+                      pattern="[0-9]*"
+                      maxLength={15}
+                      placeholder="Digits only"
                       value={form.phone}
                       onChange={(event) =>
                         updateField(
                           "phone",
-                          event.target.value,
+                          sanitizePhoneDigits(event.target.value),
                         )
                       }
                       className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"

@@ -72,10 +72,10 @@ export default function LoginPage() {
           <Image
             src="/wrdn-option-c.png"
             alt="WRDN HR System"
-            width={360}
-            height={108}
+            width={480}
+            height={144}
             priority
-            className="mx-auto mb-3 h-auto w-[210px] sm:w-[250px] lg:mx-0 lg:w-[300px]"
+            className="mx-auto mb-3 h-auto w-[250px] sm:w-[300px] lg:mx-0 lg:w-[360px]"
           />
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-teal-50/75 lg:mx-0">
             Sign in to your secure people-operations workspace.

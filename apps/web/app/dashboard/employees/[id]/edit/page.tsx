@@ -20,6 +20,7 @@ import {
     type UpdateEmployeeInput,
     type UserRole,
 } from "../../../../../src/services/employee.service";
+import { sanitizePhoneDigits } from "../../../../../src/lib/phone";
 
 interface StoredUser {
   email: string;
@@ -125,7 +126,7 @@ export default function EditEmployeePage() {
         setForm({
           firstName: employeeData.firstName,
           lastName: employeeData.lastName,
-          phone: employeeData.phone ?? "",
+          phone: sanitizePhoneDigits(employeeData.phone ?? ""),
           hireDate: formatDateForInput(
             employeeData.hireDate,
           ),
@@ -280,25 +281,14 @@ export default function EditEmployeePage() {
               Back to employee
             </Link>
 
-            <div className="mt-5">
-              <h1 className="text-3xl font-bold text-slate-900">
-                Edit Employee
-              </h1>
-
-              <p className="mt-2 text-slate-600">
-                Update employee and account
-                information.
-              </p>
-            </div>
-
             {isLoading ? (
-              <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 text-slate-600 shadow-sm">
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-8 text-slate-600 shadow-sm">
                 Loading employee information...
               </div>
             ) : (
               <form
                 onSubmit={handleSubmit}
-                className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+                className="mt-6 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
               >
                 {error && (
                   <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -364,11 +354,16 @@ export default function EditEmployeePage() {
                     <input
                       id="phone"
                       type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel"
+                      pattern="[0-9]*"
+                      maxLength={15}
+                      placeholder="Digits only"
                       value={form.phone}
                       onChange={(event) =>
                         updateTextField(
                           "phone",
-                          event.target.value,
+                          sanitizePhoneDigits(event.target.value),
                         )
                       }
                       className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-slate-900"

@@ -114,11 +114,38 @@ function resolveSearchHref(
   return item.href;
 }
 
-function getPageInformation(pathname: string): PageInformation {
+function getPageInformation(
+  pathname: string,
+  role?: string,
+): PageInformation {
   if (pathname === "/dashboard") {
     return {
       title: "Dashboard",
       subtitle: "Welcome back to your HR workspace",
+    };
+  }
+
+  if (pathname === "/dashboard/employees/new") {
+    return {
+      title: "Add Employee",
+      subtitle: "Create a user account and employee profile",
+    };
+  }
+
+  if (
+    pathname.startsWith("/dashboard/employees/") &&
+    pathname.endsWith("/edit")
+  ) {
+    return {
+      title: "Edit Employee",
+      subtitle: "Update employee and account information",
+    };
+  }
+
+  if (pathname.startsWith("/dashboard/employees/")) {
+    return {
+      title: "Employee Details",
+      subtitle: "View and manage this employee record",
     };
   }
 
@@ -151,9 +178,12 @@ function getPageInformation(pathname: string): PageInformation {
   }
 
   if (pathname.startsWith("/dashboard/payroll")) {
+    const isEmployee = normalizeRole(role || "") === "EMPLOYEE";
     return {
-      title: "Payroll",
-      subtitle: "Manage employee salary and payroll records",
+      title: isEmployee ? "My Payroll" : "Payroll",
+      subtitle: isEmployee
+        ? "View your monthly salary and payroll history"
+        : "Manage employee salary and payroll records",
     };
   }
 
@@ -221,7 +251,7 @@ export default function Header({
 }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const pageInformation = getPageInformation(pathname);
+  const pageInformation = getPageInformation(pathname, role);
 
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);

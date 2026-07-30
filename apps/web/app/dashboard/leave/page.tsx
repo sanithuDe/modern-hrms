@@ -1159,15 +1159,6 @@ export default function LeavePage() {
 
   return (
     <div className="space-y-6">
-          <h1 className="text-3xl font-bold text-slate-900">
-            Leave Management
-          </h1>
-
-          <p className="mt-2 text-slate-600">
-            Submit and manage employee leave
-            requests.
-          </p>
-
           {error && (
             <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               <TriangleAlert

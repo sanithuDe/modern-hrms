@@ -743,17 +743,6 @@ export default function ShiftAssignmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-950">
-          Shift Assignments
-        </h1>
-
-        <p className="mt-1 text-sm text-slate-500">
-          Assign Day Shift or Night
-          Shift to employees.
-        </p>
-      </div>
-
       {error ? (
         <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />

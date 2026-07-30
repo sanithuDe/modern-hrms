@@ -143,17 +143,17 @@ export default function Sidebar({ role }: SidebarProps) {
   }
 
   return (
-    <aside className="sticky top-0 z-40 flex h-screen w-[248px] shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[linear-gradient(180deg,#083538_0%,#0c4a4e_48%,#0a3d40_100%)] text-white shadow-[8px_0_32px_rgb(8_53_56/18%)]">
-      <div className="relative border-b border-white/10 px-5 py-6">
+    <aside className="sticky top-0 z-40 flex h-[var(--ui-vh)] w-[248px] shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[linear-gradient(180deg,#083538_0%,#0c4a4e_48%,#0a3d40_100%)] text-white shadow-[8px_0_32px_rgb(8_53_56/18%)]">
+      <div className="relative border-b border-white/10 px-4 py-5">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgb(26_138_125/35%),transparent_55%)]" />
         <Link href="/dashboard" className="relative block">
           <Image
             src="/wrdn-option-c.png"
             alt="WRDN HR System"
-            width={360}
-            height={108}
+            width={480}
+            height={144}
             priority
-            className="h-auto w-[190px] max-w-full"
+            className="h-auto w-[210px] max-w-full"
           />
         </Link>
       </div>

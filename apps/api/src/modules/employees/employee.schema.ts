@@ -62,7 +62,11 @@ export const createEmployeeSchema =
       phone: z
         .string()
         .trim()
-        .max(30)
+        .regex(
+          /^\d{0,15}$/,
+          "Phone number must contain digits only",
+        )
+        .max(15)
         .optional(),
 
       hireDate: z.coerce.date(),
@@ -110,7 +114,11 @@ export const updateEmployeeSchema =
         phone: z
           .string()
           .trim()
-          .max(30)
+          .regex(
+            /^\d{0,15}$/,
+            "Phone number must contain digits only",
+          )
+          .max(15)
           .nullable()
           .optional(),
 

@@ -157,16 +157,6 @@ export default function MyAttendancePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
-          My Attendance
-        </h1>
-
-        <p className="mt-1 text-sm text-gray-500">
-          View your attendance history and working hours.
-        </p>
-      </div>
-
       <form
         onSubmit={handleFilterSubmit}
         className="rounded-xl border bg-white p-5 shadow-sm"

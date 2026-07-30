@@ -46,6 +46,7 @@ import {
     type JobCandidateRanking,
 } from "../../../src/services/cv-portal.service";
 import { updateCandidateStage } from "../../../src/services/recruitment.service";
+import { sanitizePhoneDigits } from "../../../src/lib/phone";
 
 const HIRING_STAGES: CandidateStage[] = [
   "APPLIED",
@@ -492,18 +493,6 @@ function EmployeeCvPortal() {
 
   return (
     <div className="space-y-8">
-      <section>
-        <h1 className="text-3xl font-bold text-slate-900">
-          CV Portal
-        </h1>
-
-        <p className="mt-2 text-slate-600">
-          Submit your CV for an open
-          position and track your
-          application status.
-        </p>
-      </section>
-
       <MessageBanners
         error={error}
         success={success}
@@ -641,12 +630,17 @@ function EmployeeCvPortal() {
             </label>
 
             <input
-              type="text"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
+              pattern="[0-9]*"
+              maxLength={15}
+              placeholder="Digits only"
               value={form.phone}
               onChange={(event) =>
                 updateForm(
                   "phone",
-                  event.target.value,
+                  sanitizePhoneDigits(event.target.value),
                 )
               }
               className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
@@ -1310,19 +1304,6 @@ function HrCvPortal({
 
   return (
     <div className="space-y-8">
-      <section>
-        <h1 className="text-3xl font-bold text-slate-900">
-          CV Analysis Portal
-        </h1>
-
-        <p className="mt-2 text-slate-600">
-          Review employee CV submissions,
-          run Gemini analysis, compare
-          candidates, and view salary
-          recommendations.
-        </p>
-      </section>
-
       <MessageBanners
         error={error}
         success={success}

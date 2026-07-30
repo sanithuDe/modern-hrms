@@ -410,18 +410,6 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-8">
-      <section>
-        <h1 className="text-3xl font-bold text-slate-900">
-          Settings
-        </h1>
-
-        <p className="mt-2 text-slate-600">
-          Configure attendance rules,
-          office hours, and check-in
-          permissions.
-        </p>
-      </section>
-
       {error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}

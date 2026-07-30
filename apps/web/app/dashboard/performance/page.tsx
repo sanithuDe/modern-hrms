@@ -658,20 +658,8 @@ export default function PerformancePage() {
 
   return (
     <div className="space-y-8">
-      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">
-            Performance Management
-          </h1>
-
-          <p className="mt-2 text-slate-600">
-            {canManage
-              ? "Create and manage employee performance reviews."
-              : "View your performance reviews and progress."}
-          </p>
-        </div>
-
-        {canManage ? (
+      {canManage ? (
+        <section className="flex justify-end">
           <button
             type="button"
             onClick={() => {
@@ -684,8 +672,8 @@ export default function PerformancePage() {
             <Plus size={18} />
             New Review
           </button>
-        ) : null}
-      </section>
+        </section>
+      ) : null}
 
       {error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

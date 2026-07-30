@@ -27,8 +27,12 @@ export const createMyCvSubmissionSchema =
       phone: z
         .string()
         .trim()
+        .regex(
+          /^\d{0,15}$/,
+          "Phone number must contain digits only",
+        )
         .max(
-          50,
+          15,
           "Phone number is too long",
         )
         .optional()

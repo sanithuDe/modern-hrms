@@ -164,18 +164,7 @@ export default function EmployeesPage() {
 
   return (
     <div className="space-y-6">
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">
-                Employees
-              </h1>
-
-              <p className="mt-2 text-slate-600">
-                View and manage employee
-                accounts.
-              </p>
-            </div>
-
+          <div className="flex justify-end">
             <Link
               href="/dashboard/employees/new"
               className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white"
